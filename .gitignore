@@ -1,0 +1,27 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+TestResults/
+
+# Node
+node_modules/
+dist/
+*.local
+
+# Secrets and local settings: never commit
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+**/appsettings.Development.local.json
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+CLAUDE.md

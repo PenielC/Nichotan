@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Nichotan.Api/Nichotan.Api.csproj" />
+    <Project Path="src/Nichotan.Application/Nichotan.Application.csproj" />
+    <Project Path="src/Nichotan.Domain/Nichotan.Domain.csproj" />
+    <Project Path="src/Nichotan.Infrastructure/Nichotan.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Nichotan.Tests/Nichotan.Tests.csproj" />
+  </Folder>
+</Solution>

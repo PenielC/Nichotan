@@ -1,0 +1,48 @@
+# Local development services. Ports avoid the other projects on this machine.
+#   Postgres  localhost:5438
+#   S3        localhost:9010 (SeaweedFS, S3-compatible)
+#   Mailpit   localhost:1028 (SMTP), http://localhost:8028 (inbox UI)
+# Credentials here are for local development only; never reuse them anywhere else.
+name: nichotan
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: nichotan-postgres
+    environment:
+      POSTGRES_DB: nichotan
+      POSTGRES_USER: nichotan
+      POSTGRES_PASSWORD: nichotan_local_dev
+    ports:
+      - "5438:5432"
+    volumes:
+      - nichotan_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nichotan -d nichotan"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Local S3-compatible object storage. The app speaks plain S3, so production can use any
+  # S3-compatible host (AWS S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces...).
+  # (MinIO no longer publishes community images, hence SeaweedFS.)
+  s3:
+    image: chrislusf/seaweedfs:latest
+    container_name: nichotan-s3
+    command: server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json
+    ports:
+      - "9010:8333"
+    volumes:
+      - nichotan_s3:/data
+      - ./docker/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: nichotan-mailpit
+    ports:
+      - "1028:1025"
+      - "8028:8025"
+
+volumes:
+  nichotan_pgdata:
+  nichotan_s3:

@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "nichotan-local",
+      "credentials": [{ "accessKey": "nichotan", "secretKey": "nichotan_local_dev" }],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}
