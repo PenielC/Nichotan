@@ -49,11 +49,11 @@ function Sidebar({ session, onNavigate }: { session: Session; onNavigate?: () =>
 
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
-      <div className="flex items-center gap-3 px-5 py-6 text-sm">
+      <div className="flex shrink-0 items-center gap-3 px-5 py-6 text-sm">
         <Crest className="size-11" />
         <Wordmark onDark />
       </div>
-      <nav aria-label="Staff" className="flex-1 space-y-1 px-3">
+      <nav aria-label="Staff" className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-3 pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -77,7 +77,7 @@ function Sidebar({ session, onNavigate }: { session: Session; onNavigate?: () =>
           </NavLink>
         ))}
       </nav>
-      <div className="flex items-center gap-3 border-t border-sidebar-border px-5 py-4">
+      <div className="flex shrink-0 items-center gap-3 border-t border-sidebar-border px-5 py-4">
         <span className="flex size-9 items-center justify-center rounded-full bg-sidebar-accent text-xs font-semibold text-white">{initials(user.firstName, user.lastName)}</span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-white">
