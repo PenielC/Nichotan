@@ -155,6 +155,7 @@ public class DocumentTypeConfiguration : IEntityTypeConfiguration<DocumentType>
         b.Property(t => t.Description).HasMaxLength(1000);
         b.Property(t => t.Scope).HasConversion<string>().HasMaxLength(20);
         b.Property(t => t.Purpose).HasConversion<string>().HasMaxLength(30).HasDefaultValue(DocumentPurpose.None);
+        b.Property(t => t.AllowsMultipleFiles).HasDefaultValue(false);
         b.HasIndex(t => t.Name).IsUnique();
     }
 }
@@ -218,6 +219,7 @@ public class DocumentVersionConfiguration : IEntityTypeConfiguration<DocumentVer
         b.Property(v => v.ContentType).HasMaxLength(100).IsRequired();
         b.Property(v => v.Sha256).HasMaxLength(64).IsRequired();
         b.Property(v => v.UploadedByEmail).HasMaxLength(256);
+        b.Property(v => v.Position).HasDefaultValue(1);
         b.HasIndex(v => new { v.DocumentId, v.VersionNumber }).IsUnique();
     }
 }

@@ -41,6 +41,7 @@ public enum AuditAction
     AdmissionStatusCorrected,
     AdmissionDetailsUpdated,
     DocumentUploaded,
+    DocumentFileRemoved,
     DocumentReviewed,
     DocumentDownloaded,
     ChecklistChanged,

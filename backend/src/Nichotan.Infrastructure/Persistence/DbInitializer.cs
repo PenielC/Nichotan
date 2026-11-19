@@ -63,7 +63,7 @@ public class DbInitializer(
         if (await db.DocumentTypes.AnyAsync(cancellationToken)) return;
 
         var passport = new DocumentType("Passport", "A clear scan of the photo page.", DocumentScope.Candidate, tracksExpiry: true, isAutomatic: false, sortOrder: 1);
-        var records = new DocumentType("Academic records", "Certificates and transcripts for your schooling so far.", DocumentScope.Candidate, false, false, 2);
+        var records = new DocumentType("Academic records", "Certificates and transcripts for your schooling so far. Add every file, one after another.", DocumentScope.Candidate, false, false, 2, allowsMultipleFiles: true);
         var form = new DocumentType("Nichotan application form", "Met when you sign and submit your application form.", DocumentScope.Candidate, false, isAutomatic: true, 3);
         var cv = new DocumentType("CV", "Your curriculum vitae.", DocumentScope.Candidate, false, false, 4);
         var academicReference = new DocumentType("Academic reference", "A reference letter from a lecturer or teacher.", DocumentScope.Candidate, false, false, 5);

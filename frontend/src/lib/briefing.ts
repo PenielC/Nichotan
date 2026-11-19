@@ -1,5 +1,5 @@
 export type BriefingUrgency = 'Overdue' | 'Today' | 'Soon'
-export type BriefingKind = 'Biometrics' | 'Pal' | 'Task'
+export type BriefingKind = 'Biometrics' | 'Pal' | 'Document' | 'Task'
 
 export interface BriefingItem {
   kind: BriefingKind

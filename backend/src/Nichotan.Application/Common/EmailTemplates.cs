@@ -83,6 +83,16 @@ public static class EmailTemplates
         link,
         "You're receiving this because applications sent for review are announced to this address.");
 
+    /// <summary>A student has sent back a document staff asked to see again. Link, student's name and the kind of document only.</summary>
+    public static EmailMessage DocumentResubmitted(string to, string studentName, string documentName, string link) => Build(
+        to,
+        "A student has sent a document again",
+        "team",
+        $"{Clean(studentName, 80)} has uploaded {Clean(documentName, 120)} again after it was sent back. It is waiting for a decision.",
+        "Open the student's record",
+        link,
+        "You're receiving this because documents sent back for fixes are announced to this address.");
+
     /// <summary>A student has uploaded an offer letter. Link, student's name and the school only.</summary>
     public static EmailMessage OfferLetterUploaded(string to, string studentName, string school, string link) => Build(
         to,

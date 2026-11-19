@@ -9,7 +9,7 @@ using Nichotan.Domain.Documents;
 
 namespace Nichotan.Api.Controllers;
 
-public record SaveDocumentTypeRequest(string Name, string? Description, DocumentScope Scope, bool TracksExpiry, bool IsActive = true);
+public record SaveDocumentTypeRequest(string Name, string? Description, DocumentScope Scope, bool TracksExpiry, bool IsActive = true, bool AllowsMultipleFiles = false);
 public record SaveRequirementRequest(Guid DocumentTypeId, DestinationCountry? Country, ApplicantLevel? Level, Guid? InstitutionId, bool IsRequired, bool IsActive = true, ChecklistStage Stage = ChecklistStage.Admission);
 public record ReviewDocumentRequest(DocumentStatus Decision, string? Note);
 public record ChecklistItemRequest(Guid DocumentTypeId, bool Required, string? Note);
@@ -24,6 +24,10 @@ public class UploadDocumentForm
     public Guid? CandidateId { get; set; }
 
     public DateOnly? ExpiresOn { get; set; }
+
+    /// <summary>For a document that holds several files: which file this replaces. Leave it out to add another.</summary>
+    public int? Position { get; set; }
+
     public IFormFile? File { get; set; }
 }
 
@@ -41,12 +45,12 @@ public class DocumentsController(ISender sender) : ControllerBase
     [Authorize(Policy = Policies.Administrator)]
     [HttpPost("document-types")]
     public async Task<DocumentTypeResult> CreateType(SaveDocumentTypeRequest request, CancellationToken cancellationToken) =>
-        await sender.Send(new SaveDocumentTypeCommand(null, request.Name, request.Description, request.Scope, request.TracksExpiry, request.IsActive), cancellationToken);
+        await sender.Send(new SaveDocumentTypeCommand(null, request.Name, request.Description, request.Scope, request.TracksExpiry, request.IsActive, request.AllowsMultipleFiles), cancellationToken);
 
     [Authorize(Policy = Policies.Administrator)]
     [HttpPut("document-types/{id:guid}")]
     public async Task<DocumentTypeResult> UpdateType(Guid id, SaveDocumentTypeRequest request, CancellationToken cancellationToken) =>
-        await sender.Send(new SaveDocumentTypeCommand(id, request.Name, request.Description, request.Scope, request.TracksExpiry, request.IsActive), cancellationToken);
+        await sender.Send(new SaveDocumentTypeCommand(id, request.Name, request.Description, request.Scope, request.TracksExpiry, request.IsActive, request.AllowsMultipleFiles), cancellationToken);
 
     [Authorize(Policy = Policies.CaseWorker)]
     [HttpGet("document-requirements")]
@@ -105,8 +109,13 @@ public class DocumentsController(ISender sender) : ControllerBase
     {
         if (form.File is null || form.File.Length == 0) throw new Nichotan.Domain.Common.DomainException("Choose a file to upload.");
         await using var content = form.File.OpenReadStream();
-        return await sender.Send(new UploadDocumentCommand(form.CandidateId, form.DocumentTypeId, form.ApplicationId, form.ExpiresOn, form.File.FileName, content), cancellationToken);
+        return await sender.Send(new UploadDocumentCommand(form.CandidateId, form.DocumentTypeId, form.ApplicationId, form.ExpiresOn, form.File.FileName, content, form.Position), cancellationToken);
     }
+
+    /// <summary>Takes one file out of a document that holds several. The file stays on record.</summary>
+    [Authorize(Policy = Policies.CandidateOrStaff)]
+    [HttpDelete("documents/{id:guid}/files/{position:int}")]
+    public async Task<DocumentDetail> RemoveFile(Guid id, int position, CancellationToken cancellationToken) => await sender.Send(new RemoveDocumentFileCommand(id, position), cancellationToken);
 
     [Authorize(Policy = Policies.DocumentStaff)]
     [HttpPost("documents/{id:guid}/review")]

@@ -26,14 +26,14 @@ public class DocumentType : Entity
 {
     private DocumentType() { }
 
-    public DocumentType(string name, string? description, DocumentScope scope, bool tracksExpiry, bool isAutomatic, int sortOrder, DocumentPurpose purpose = DocumentPurpose.None)
+    public DocumentType(string name, string? description, DocumentScope scope, bool tracksExpiry, bool isAutomatic, int sortOrder, DocumentPurpose purpose = DocumentPurpose.None, bool allowsMultipleFiles = false)
     {
         Purpose = purpose;
         Scope = scope;
         IsAutomatic = isAutomatic;
         SortOrder = sortOrder;
         IsActive = true;
-        Update(name, description, tracksExpiry);
+        Update(name, description, tracksExpiry, allowsMultipleFiles);
     }
 
     public string Name { get; private set; } = string.Empty;
@@ -43,6 +43,9 @@ public class DocumentType : Entity
     /// <summary>Documents of this kind can carry an expiry date (a passport).</summary>
     public bool TracksExpiry { get; private set; }
 
+    /// <summary>One document is a set of files (academic records: a transcript per year, a certificate). Reviewed as a set.</summary>
+    public bool AllowsMultipleFiles { get; private set; }
+
     /// <summary>Met by something the system already knows (the signed Nichotan form), so nothing is uploaded.</summary>
     public bool IsAutomatic { get; private set; }
 
@@ -51,12 +54,13 @@ public class DocumentType : Entity
     public int SortOrder { get; private set; }
     public bool IsActive { get; private set; }
 
-    public void Update(string name, string? description, bool tracksExpiry)
+    public void Update(string name, string? description, bool tracksExpiry, bool allowsMultipleFiles = false)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new DomainException("A document type needs a name.");
         Name = name.Trim();
         Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
         TracksExpiry = tracksExpiry;
+        AllowsMultipleFiles = allowsMultipleFiles;
     }
 
     public void SetActive(bool active) => IsActive = active;
@@ -193,12 +197,18 @@ public class CandidateDocument : Entity
     public int CurrentVersion { get; private set; }
     public IReadOnlyList<DocumentVersion> Versions => _versions;
 
-    /// <summary>The file version being reviewed. Earlier versions are kept.</summary>
-    public DocumentVersion NewVersion(string storageKey, string fileName, string contentType, long sizeBytes, string sha256, DateOnly? expiresOn, Guid uploadedByUserId, string? uploadedByEmail, DateTime nowUtc, bool byCandidate)
+    /// <summary>The most files one document can hold.</summary>
+    public const int MaxFiles = 10;
+
+    /// <summary>
+    /// A new upload. The version number counts every upload to the document. <paramref name="position"/> says which file of the set it
+    /// is: a single-file document always uses 1, and a new upload at the same position replaces that file (the earlier one is kept).
+    /// </summary>
+    public DocumentVersion NewVersion(string storageKey, string fileName, string contentType, long sizeBytes, string sha256, DateOnly? expiresOn, Guid uploadedByUserId, string? uploadedByEmail, DateTime nowUtc, bool byCandidate, int position = 1)
     {
         // Once staff have accepted a document the candidate can't swap it; staff still can, on their behalf.
         if (byCandidate && Status == DocumentStatus.Accepted) throw new DomainException("This document has been accepted. Ask your counsellor if it needs replacing.");
-        var version = new DocumentVersion(Id, CurrentVersion + 1, storageKey, fileName, contentType, sizeBytes, sha256, expiresOn, uploadedByUserId, uploadedByEmail, nowUtc);
+        var version = new DocumentVersion(Id, CurrentVersion + 1, storageKey, fileName, contentType, sizeBytes, sha256, expiresOn, uploadedByUserId, uploadedByEmail, nowUtc, position);
         CurrentVersion = version.VersionNumber;
         Status = DocumentStatus.Uploaded;
         return version;
@@ -222,8 +232,9 @@ public class DocumentVersion : Entity
 {
     private DocumentVersion() { }
 
-    internal DocumentVersion(Guid documentId, int versionNumber, string storageKey, string fileName, string contentType, long sizeBytes, string sha256, DateOnly? expiresOn, Guid uploadedByUserId, string? uploadedByEmail, DateTime uploadedAtUtc)
+    internal DocumentVersion(Guid documentId, int versionNumber, string storageKey, string fileName, string contentType, long sizeBytes, string sha256, DateOnly? expiresOn, Guid uploadedByUserId, string? uploadedByEmail, DateTime uploadedAtUtc, int position = 1)
     {
+        Position = position;
         DocumentId = documentId;
         VersionNumber = versionNumber;
         StorageKey = storageKey;
@@ -240,6 +251,14 @@ public class DocumentVersion : Entity
 
     public Guid DocumentId { get; private set; }
     public int VersionNumber { get; private set; }
+
+    /// <summary>Which file of the document this is. A document that is one file always has 1.</summary>
+    public int Position { get; private set; } = 1;
+
+    /// <summary>Set when the file was taken out of the set. The file itself is kept on record; it just no longer counts.</summary>
+    public DateTime? RemovedAtUtc { get; private set; }
+
+    public void Remove(DateTime nowUtc) => RemovedAtUtc ??= nowUtc;
 
     /// <summary>Where the file is in private object storage. Never shown to users; the name they see is FileName.</summary>
     public string StorageKey { get; private set; } = string.Empty;

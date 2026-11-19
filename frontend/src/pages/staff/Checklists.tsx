@@ -67,6 +67,7 @@ export function Checklists() {
                       <TableCell>
                         <span className="font-medium text-ink">{t.name}</span>
                         {t.tracksExpiry && <Badge variant="outline" className="ml-2">Has expiry</Badge>}
+                        {t.allowsMultipleFiles && <Badge variant="outline" className="ml-2">Several files</Badge>}
                         {t.isAutomatic && <Badge variant="secondary" className="ml-2">Met by the signed form</Badge>}
                         {!t.isActive && <Badge variant="outline" className="ml-2">Retired</Badge>}
                         {t.purpose !== 'None' && <Badge variant="secondary" className="ml-2">Managed on the application</Badge>}
@@ -158,10 +159,11 @@ function TypeDialog({ target, onClose, onSaved }: { target: DocumentTypeDto | 'n
   const [description, setDescription] = useState(existing?.description ?? '')
   const [scope, setScope] = useState<DocumentScope>(existing?.scope ?? 'Candidate')
   const [expiry, setExpiry] = useState(existing?.tracksExpiry ?? false)
+  const [several, setSeveral] = useState(existing?.allowsMultipleFiles ?? false)
   const [active, setActive] = useState(existing?.isActive ?? true)
   const save = useMutation({
     mutationFn: () => {
-      const body = { name: name.trim(), description: description.trim() || null, scope, tracksExpiry: expiry, isActive: active }
+      const body = { name: name.trim(), description: description.trim() || null, scope, tracksExpiry: expiry, isActive: active, allowsMultipleFiles: several }
       return existing ? put<DocumentTypeDto>(`/api/document-types/${existing.id}`, body) : post<DocumentTypeDto>('/api/document-types', body)
     },
     onSuccess: () => {
@@ -195,6 +197,12 @@ function TypeDialog({ target, onClose, onSaved }: { target: DocumentTypeDto | 'n
             <Checkbox id="expiry" checked={expiry} onCheckedChange={(v) => setExpiry(v === true)} />
             <Label htmlFor="expiry" className="font-normal">
               It has an expiry date (like a passport)
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="several" checked={several} onCheckedChange={(v) => setSeveral(v === true)} />
+            <Label htmlFor="several" className="font-normal">
+              It can be several files (like academic records), reviewed together
             </Label>
           </div>
           {existing && (

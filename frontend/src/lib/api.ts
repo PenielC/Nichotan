@@ -199,6 +199,7 @@ export async function download(path: string, fileName: string): Promise<void> {
 export const get = <T>(path: string) => api<T>('GET', path)
 export const post = <T = void>(path: string, body?: unknown) => api<T>('POST', path, body)
 export const put = <T>(path: string, body: unknown) => api<T>('PUT', path, body)
+export const del = <T = void>(path: string) => api<T>('DELETE', path)
 
 export function query(params: Record<string, string | number | undefined | null>): string {
   const search = new URLSearchParams()

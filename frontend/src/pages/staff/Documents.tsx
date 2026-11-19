@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Download, Eye, History, Plus, RefreshCw, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { SlotBadge, UploadDialog } from '@/components/document-parts'
+import { SlotFileList } from '@/components/slot-files'
 import { FormError, SelectField } from '@/components/form'
 import { PageHeader } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
@@ -100,7 +101,7 @@ export function CandidateDocumentsCard({ candidateId }: { candidateId: string })
   const { canReview } = useDocumentRoles()
   const queryClient = useQueryClient()
   const overview = useQuery({ queryKey: ['documents', 'candidate', candidateId], queryFn: () => get<DocumentsOverview>(`/api/documents/candidate/${candidateId}`) })
-  const [uploading, setUploading] = useState<DocumentSlot | null>(null)
+  const [uploading, setUploading] = useState<{ slot: DocumentSlot; position?: number } | null>(null)
   const [reviewing, setReviewing] = useState<DocumentSlot | null>(null)
   const [history, setHistory] = useState<string | null>(null)
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ['documents'] })
@@ -136,17 +137,20 @@ export function CandidateDocumentsCard({ candidateId }: { candidateId: string })
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {s.applicationLabel ? `${s.applicationLabel} · ` : ''}
-                    {s.isAutomatic ? 'Met when the form is signed' : s.fileName ? `${s.fileName}${s.version > 1 ? ` · v${s.version}` : ''}${s.expiresOn ? ` · expires ${dayText(s.expiresOn)}` : ''}` : 'Nothing uploaded'}
+                    {s.isAutomatic ? 'Met when the form is signed' : s.allowsMultipleFiles && s.files.length > 0 ? `${s.files.length} file${s.files.length === 1 ? '' : 's'}` : s.fileName ? `${s.fileName}${s.version > 1 ? ` · v${s.version}` : ''}${s.expiresOn ? ` · expires ${dayText(s.expiresOn)}` : ''}` : 'Nothing uploaded'}
                   </p>
                   {s.reviewNote && <p className="mt-1 text-xs text-destructive">Asked to fix: {s.reviewNote}</p>}
+                  {s.allowsMultipleFiles && s.files.length > 0 && <SlotFileList slot={s} canChange={canReview && s.status !== 'Accepted'} onReplace={(position) => setUploading({ slot: s, position })} onChanged={refresh} />}
                 </div>
                 <div className="flex flex-wrap items-center gap-1">
                   <SlotBadge status={s.status} />
                   {s.documentId && s.fileName && (
                     <>
-                      <Button variant="ghost" size="icon" aria-label={`Download ${s.typeName}`} onClick={() => saveFile(s.documentId!, s.fileName!)}>
-                        <Download />
-                      </Button>
+                      {!s.allowsMultipleFiles && (
+                        <Button variant="ghost" size="icon" aria-label={`Download ${s.typeName}`} onClick={() => saveFile(s.documentId!, s.fileName!)}>
+                          <Download />
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon" aria-label={`History of ${s.typeName}`} onClick={() => setHistory(s.documentId)}>
                         <History />
                       </Button>
@@ -170,7 +174,7 @@ export function CandidateDocumentsCard({ candidateId }: { candidateId: string })
                     </>
                   )}
                   {canReview && s.needsReview && !s.isAutomatic && s.purpose === 'None' && s.status !== 'Accepted' && (
-                    <Button variant="ghost" size="icon" aria-label={`Upload ${s.typeName} for the candidate`} onClick={() => setUploading(s)}>
+                    <Button variant="ghost" size="icon" aria-label={`${s.allowsMultipleFiles ? 'Add a file to' : 'Upload'} ${s.typeName} for the candidate`} onClick={() => setUploading({ slot: s })}>
                       <Upload />
                     </Button>
                   )}
@@ -180,7 +184,7 @@ export function CandidateDocumentsCard({ candidateId }: { candidateId: string })
           )}
         </CardContent>
       </Card>
-      {uploading && <UploadDialog slot={uploading} candidateId={candidateId} onClose={() => setUploading(null)} onDone={refresh} />}
+      {uploading && <UploadDialog slot={uploading.slot} position={uploading.position} candidateId={candidateId} onClose={() => setUploading(null)} onDone={refresh} />}
       {reviewing && <ResubmitDialog slot={reviewing} onClose={() => setReviewing(null)} onDone={(note) => decide.mutate({ id: reviewing.documentId!, decision: 'NeedsResubmission', note })} />}
       {history && <HistoryDialog documentId={history} onClose={() => setHistory(null)} />}
     </>
@@ -237,6 +241,7 @@ function HistoryDialog({ documentId, onClose }: { documentId: string; onClose: (
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium text-ink">
                     Version {v.versionNumber} · {v.fileName}
+                    {v.removed && <span className="ml-2 text-xs font-normal text-muted-foreground">(taken out)</span>}
                   </span>
                   <Button variant="ghost" size="icon" aria-label={`Download version ${v.versionNumber}`} onClick={() => saveFile(detail.data!.id, v.fileName, v.versionNumber)}>
                     <Download />
@@ -338,11 +343,11 @@ export function ChecklistCard({ applicationId, candidateId, finished, visaCaseId
                   {source === 'Manual' && <Badge variant="secondary">Added by staff</Badge>}
                 </p>
                 {note && <p className="text-xs text-muted-foreground">{note}</p>}
-                {s.fileName && <p className="text-xs text-muted-foreground">{s.fileName}</p>}
+                {s.allowsMultipleFiles && s.files.length > 0 ? <SlotFileList slot={s} canChange={false} /> : s.fileName && <p className="text-xs text-muted-foreground">{s.fileName}</p>}
               </div>
               <div className="flex items-center gap-1">
                 <SlotBadge status={s.status} />
-                {s.documentId && s.fileName && (
+                {s.documentId && s.fileName && !s.allowsMultipleFiles && (
                   <Button variant="ghost" size="icon" aria-label={`Download ${s.typeName}`} onClick={() => saveFile(s.documentId!, s.fileName!)}>
                     <Download />
                   </Button>

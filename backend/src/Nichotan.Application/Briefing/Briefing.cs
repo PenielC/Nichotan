@@ -2,8 +2,10 @@ using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Nichotan.Application.Admissions;
 using Nichotan.Application.Common;
+using Nichotan.Application.Documents;
 using Nichotan.Application.Visas;
 using Nichotan.Domain.Admissions;
+using Nichotan.Domain.Documents;
 using Nichotan.Domain.Tasks;
 using Nichotan.Domain.Visas;
 
@@ -24,10 +26,14 @@ public static class BriefingRules
 {
     public const string Biometrics = "Biometrics";
     public const string Pal = "Pal";
+    public const string Document = "Document";
     public const string Task = "Task";
 
     /// <summary>A task due within this many days (after today) is shown as coming up.</summary>
     public const int TaskSoonDays = 3;
+
+    /// <summary>A document the student has sent back after staff asked for fixes is overdue for a decision after this many days.</summary>
+    public const int ResubmittedOverdueAfterDays = 2;
 
     /// <summary>Most items listed; the counts always cover everything.</summary>
     public const int MaxItems = 30;
@@ -50,7 +56,7 @@ public static class BriefingRules
         return $"{(total == 1 ? "1 thing needs" : $"{total} things need")} your attention: {string.Join(", ", parts)}.";
     }
 
-    private static int KindOrder(string kind) => kind switch { Biometrics => 0, Pal => 1, _ => 2 };
+    private static int KindOrder(string kind) => kind switch { Biometrics => 0, Pal => 1, Document => 2, _ => 3 };
 }
 
 /// <summary>Today's briefing for the signed-in staff member: their own open tasks, plus the case alerts everyone shares.</summary>
@@ -88,6 +94,29 @@ public class GetBriefingHandler(IAppDbContext db, ICurrentUser current, IClock c
         {
             if (!f.Overdue) continue;
             items.Add(new BriefingItem(BriefingRules.Pal, BriefingUrgency.Overdue, $"PAL letter: {f.CandidateName}", $"{f.InstitutionName} · {f.DaysWaiting} days since the acceptance, no PAL yet", $"/staff/admissions/{f.ApplicationId}", Math.Max(0, f.DaysWaiting - PalRules.FollowUpAfterDays)));
+        }
+
+        // Shared: documents staff sent back that the student has now sent again. Someone is waiting for a decision.
+        var visaOnly = await Slots.VisaOnlyTypeIdsAsync(db, cancellationToken);
+        var sentBack = await db.DocumentReviews.AsNoTracking().Where(r => r.Decision == DocumentStatus.NeedsResubmission).Select(r => r.DocumentId).Distinct().ToListAsync(cancellationToken);
+        var resubmitted = await db.CandidateDocuments.AsNoTracking().Where(d => d.Status == DocumentStatus.Uploaded && sentBack.Contains(d.Id) && !visaOnly.Contains(d.DocumentTypeId)).ToListAsync(cancellationToken);
+        if (resubmitted.Count > 0)
+        {
+            var ids = resubmitted.Select(d => d.Id).ToList();
+            var lastReview = (await db.DocumentReviews.AsNoTracking().Where(r => ids.Contains(r.DocumentId)).ToListAsync(cancellationToken)).GroupBy(r => r.DocumentId).ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.ReviewedAtUtc).First());
+            var sentAgain = (await db.DocumentVersions.AsNoTracking().Where(v => ids.Contains(v.DocumentId) && v.RemovedAtUtc == null).Select(v => new { v.DocumentId, v.UploadedAtUtc }).ToListAsync(cancellationToken)).GroupBy(v => v.DocumentId).ToDictionary(g => g.Key, g => g.Max(v => v.UploadedAtUtc));
+            var typeNames = await db.DocumentTypes.AsNoTracking().ToDictionaryAsync(t => t.Id, t => t.Name, cancellationToken);
+            var owners = resubmitted.Select(d => d.CandidateId).Distinct().ToList();
+            var people = await db.CandidateProfiles.AsNoTracking().Where(c => owners.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.FirstName + " " + c.LastName, cancellationToken);
+            foreach (var d in resubmitted)
+            {
+                // Only if the last decision was "send it back" and something new has come in since.
+                if (lastReview.GetValueOrDefault(d.Id) is not { Decision: DocumentStatus.NeedsResubmission } review || !sentAgain.TryGetValue(d.Id, out var at) || at <= review.ReviewedAtUtc) continue;
+                var waiting = Math.Max(0, today.DayNumber - DateOnly.FromDateTime(at).DayNumber);
+                var lateForDecision = waiting >= BriefingRules.ResubmittedOverdueAfterDays;
+                var detail = $"{typeNames.GetValueOrDefault(d.DocumentTypeId, "Document")} sent again {(waiting == 0 ? "today" : waiting == 1 ? "yesterday" : $"{waiting} days ago")}, waiting for a decision";
+                items.Add(new BriefingItem(BriefingRules.Document, lateForDecision ? BriefingUrgency.Overdue : BriefingUrgency.Today, $"Sent again: {people.GetValueOrDefault(d.CandidateId, "A student")}", detail, $"/staff/candidates/{d.CandidateId}", lateForDecision ? waiting - BriefingRules.ResubmittedOverdueAfterDays : 0));
+            }
         }
 
         // Mine only: open tasks that are overdue, due today, or due in the next few days.

@@ -21,7 +21,7 @@ namespace Nichotan.Application.Documents;
 
 public enum SlotStatus { Missing, Uploaded, UnderReview, Accepted, NeedsResubmission }
 
-public record DocumentTypeResult(Guid Id, string Name, string? Description, DocumentScope Scope, bool TracksExpiry, bool IsAutomatic, bool IsActive, int SortOrder, DocumentPurpose Purpose);
+public record DocumentTypeResult(Guid Id, string Name, string? Description, DocumentScope Scope, bool TracksExpiry, bool IsAutomatic, bool IsActive, int SortOrder, DocumentPurpose Purpose, bool AllowsMultipleFiles = false);
 
 public record RequirementResult(Guid Id, Guid DocumentTypeId, string DocumentTypeName, DestinationCountry? Country, ApplicantLevel? Level, Guid? InstitutionId, string? InstitutionName, bool IsRequired, bool IsActive, ChecklistStage Stage);
 
@@ -44,7 +44,12 @@ public record DocumentSlot(
     DateOnly? ExpiresOn,
     string? ReviewNote,
     DocumentPurpose Purpose,
-    bool NeedsReview = true);
+    bool NeedsReview = true,
+    bool AllowsMultipleFiles = false,
+    IReadOnlyList<SlotFile>? Files = null);
+
+/// <summary>One file in a document, as it stands now. <see cref="VersionNumber"/> is what downloads and replacements refer to.</summary>
+public record SlotFile(int Position, int VersionNumber, string FileName, long SizeBytes, DateTime UploadedAtUtc, DateOnly? ExpiresOn);
 
 public record DocumentsOverview(Guid CandidateId, IReadOnlyList<DocumentSlot> Slots);
 
@@ -54,13 +59,13 @@ public record DocumentGaps(int Missing, int NotAccepted, IReadOnlyList<string> M
 
 public record ChecklistResult(Guid ApplicationId, IReadOnlyList<ChecklistLine> Items, DocumentGaps Gaps);
 
-public record DocumentVersionResult(int VersionNumber, string FileName, string ContentType, long SizeBytes, DateTime UploadedAtUtc, string? UploadedBy, DateOnly? ExpiresOn);
+public record DocumentVersionResult(int VersionNumber, string FileName, string ContentType, long SizeBytes, DateTime UploadedAtUtc, string? UploadedBy, DateOnly? ExpiresOn, int Position = 1, bool Removed = false);
 
 public record DocumentReviewResult(int VersionNumber, DocumentStatus Decision, string? Note, string? Reviewer, DateTime ReviewedAtUtc);
 
 public record DocumentDetail(Guid Id, Guid CandidateId, Guid DocumentTypeId, string TypeName, Guid? ApplicationId, DocumentStatus Status, int CurrentVersion, IReadOnlyList<DocumentVersionResult> Versions, IReadOnlyList<DocumentReviewResult> Reviews);
 
-public record ReviewQueueItem(Guid DocumentId, Guid CandidateId, string CandidateName, string TypeName, DocumentStatus Status, int Version, string FileName, DateTime UploadedAtUtc);
+public record ReviewQueueItem(Guid DocumentId, Guid CandidateId, string CandidateName, string TypeName, DocumentStatus Status, int Version, string FileName, DateTime UploadedAtUtc, int FileCount = 1);
 
 public record FileDownload(Stream Content, string FileName, string ContentType);
 
@@ -68,6 +73,15 @@ public record FileDownload(Stream Content, string FileName, string ContentType);
 
 /// <summary>What one slot should show, before it is matched to uploads.</summary>
 internal record Wanted(Guid TypeId, Guid? ApplicationId, string? ApplicationLabel, bool Required);
+
+/// <summary>Which files a document holds now: the latest upload at each position, leaving out any that were taken out.</summary>
+internal static class DocumentFiles
+{
+    public static List<DocumentVersion> Live(IEnumerable<DocumentVersion> versions) =>
+        versions.GroupBy(v => v.Position).Select(g => g.OrderByDescending(v => v.VersionNumber).First()).Where(v => v.RemovedAtUtc is null).OrderBy(v => v.Position).ToList();
+
+    public static SlotFile ToSlotFile(DocumentVersion v) => new(v.Position, v.VersionNumber, v.FileName, v.SizeBytes, v.UploadedAtUtc, v.ExpiresOn);
+}
 
 internal static class Slots
 {
@@ -95,17 +109,19 @@ internal static class Slots
             {
                 slot = new DocumentSlot(type.Id, type.Name, type.Description, type.Scope, false, true, null, null, w.Required, formSubmitted ? SlotStatus.Accepted : SlotStatus.Missing, null, 0, null, null, null, null, type.Purpose);
             }
-            else if (doc is null)
+            else if (doc is null || !DocumentFiles.Live(versions.Where(v => v.DocumentId == doc.Id)).Any())
             {
-                slot = new DocumentSlot(type.Id, type.Name, type.Description, type.Scope, type.TracksExpiry, false, type.Scope == DocumentScope.Application ? w.ApplicationId : null, type.Scope == DocumentScope.Application ? w.ApplicationLabel : null, w.Required, SlotStatus.Missing, null, 0, null, null, null, null, type.Purpose);
+                // Nothing uploaded, or every file was taken out again.
+                slot = new DocumentSlot(type.Id, type.Name, type.Description, type.Scope, type.TracksExpiry, false, type.Scope == DocumentScope.Application ? w.ApplicationId : null, type.Scope == DocumentScope.Application ? w.ApplicationLabel : null, w.Required, SlotStatus.Missing, null, 0, null, null, null, null, type.Purpose, AllowsMultipleFiles: type.AllowsMultipleFiles, Files: []);
             }
             else
             {
-                var version = versions.FirstOrDefault(v => v.DocumentId == doc.Id && v.VersionNumber == doc.CurrentVersion);
+                var files = DocumentFiles.Live(versions.Where(v => v.DocumentId == doc.Id));
+                var version = files.OrderByDescending(f => f.VersionNumber).First();
                 var lastReview = reviews.Where(r => r.DocumentId == doc.Id).OrderByDescending(r => r.ReviewedAtUtc).FirstOrDefault();
                 var note = lastReview is { Decision: DocumentStatus.NeedsResubmission } && doc.Status == DocumentStatus.NeedsResubmission ? lastReview.Note : null;
                 slot = new DocumentSlot(type.Id, type.Name, type.Description, type.Scope, type.TracksExpiry, false, doc.ApplicationId, doc.ApplicationId is null ? null : w.ApplicationLabel, w.Required,
-                    (SlotStatus)(int)(doc.Status + 1), doc.Id, doc.CurrentVersion, version?.FileName, version?.UploadedAtUtc, version?.ExpiresOn, note, type.Purpose);
+                    (SlotStatus)(int)(doc.Status + 1), doc.Id, doc.CurrentVersion, version.FileName, version.UploadedAtUtc, version.ExpiresOn, note, type.Purpose, AllowsMultipleFiles: type.AllowsMultipleFiles, Files: files.Select(DocumentFiles.ToSlotFile).ToList());
             }
 
             // Visa documents are only collected here so the visa application can be lodged; the authority reviews them on its own platform.
@@ -260,11 +276,11 @@ public class ListDocumentTypesHandler(IAppDbContext db, ICurrentUser current) : 
     {
         current.RequireAny(Guard.CaseWorkers);
         return await db.DocumentTypes.AsNoTracking().OrderBy(t => t.SortOrder).ThenBy(t => t.Name)
-            .Select(t => new DocumentTypeResult(t.Id, t.Name, t.Description, t.Scope, t.TracksExpiry, t.IsAutomatic, t.IsActive, t.SortOrder, t.Purpose)).ToListAsync(cancellationToken);
+            .Select(t => new DocumentTypeResult(t.Id, t.Name, t.Description, t.Scope, t.TracksExpiry, t.IsAutomatic, t.IsActive, t.SortOrder, t.Purpose, t.AllowsMultipleFiles)).ToListAsync(cancellationToken);
     }
 }
 
-public record SaveDocumentTypeCommand(Guid? Id, string Name, string? Description, DocumentScope Scope, bool TracksExpiry, bool IsActive) : ICommand<DocumentTypeResult>;
+public record SaveDocumentTypeCommand(Guid? Id, string Name, string? Description, DocumentScope Scope, bool TracksExpiry, bool IsActive, bool AllowsMultipleFiles = false) : ICommand<DocumentTypeResult>;
 
 public class SaveDocumentTypeValidator : AbstractValidator<SaveDocumentTypeCommand>
 {
@@ -287,20 +303,20 @@ public class SaveDocumentTypeHandler(IAppDbContext db, ICurrentUser current, IAu
             type = await db.DocumentTypes.FirstOrDefaultAsync(t => t.Id == id, cancellationToken) ?? throw new NotFoundException("Document type not found.");
             if (type.Scope != command.Scope) throw new DomainException("A document type's scope can't change once it exists.");
             if (await db.DocumentTypes.AnyAsync(t => t.Id != id && t.Name.ToLower() == name.ToLower(), cancellationToken)) throw new ConflictException("A document type with that name already exists.");
-            type.Update(command.Name, command.Description, command.TracksExpiry);
+            type.Update(command.Name, command.Description, command.TracksExpiry, command.AllowsMultipleFiles);
             type.SetActive(command.IsActive);
         }
         else
         {
             if (await db.DocumentTypes.AnyAsync(t => t.Name.ToLower() == name.ToLower(), cancellationToken)) throw new ConflictException("A document type with that name already exists.");
             var order = (await db.DocumentTypes.MaxAsync(t => (int?)t.SortOrder, cancellationToken) ?? 0) + 1;
-            type = new DocumentType(command.Name, command.Description, command.Scope, command.TracksExpiry, isAutomatic: false, order);
+            type = new DocumentType(command.Name, command.Description, command.Scope, command.TracksExpiry, isAutomatic: false, order, allowsMultipleFiles: command.AllowsMultipleFiles);
             db.DocumentTypes.Add(type);
         }
 
         audit.Add(AuditAction.DocumentRulesChanged, entityType: nameof(DocumentType), entityId: type.Id.ToString(), details: new { change = command.Id is null ? "created" : "updated" });
         await db.SaveChangesAsync(cancellationToken);
-        return new DocumentTypeResult(type.Id, type.Name, type.Description, type.Scope, type.TracksExpiry, type.IsAutomatic, type.IsActive, type.SortOrder, type.Purpose);
+        return new DocumentTypeResult(type.Id, type.Name, type.Description, type.Scope, type.TracksExpiry, type.IsAutomatic, type.IsActive, type.SortOrder, type.Purpose, type.AllowsMultipleFiles);
     }
 }
 
@@ -487,7 +503,7 @@ public class GetDocumentHandler(IAppDbContext db, ICurrentUser current) : IQuery
         var reviews = await db.DocumentReviews.AsNoTracking().Where(r => r.DocumentId == document.Id).OrderBy(r => r.ReviewedAtUtc).ToListAsync(cancellationToken);
         // Candidates see what was decided and why, not which staff member decided or uploaded.
         return new DocumentDetail(document.Id, document.CandidateId, document.DocumentTypeId, typeName, document.ApplicationId, document.Status, document.CurrentVersion,
-            versions.Select(v => new DocumentVersionResult(v.VersionNumber, v.FileName, v.ContentType, v.SizeBytes, v.UploadedAtUtc, isOwner ? null : v.UploadedByEmail, v.ExpiresOn)).ToList(),
+            versions.Select(v => new DocumentVersionResult(v.VersionNumber, v.FileName, v.ContentType, v.SizeBytes, v.UploadedAtUtc, isOwner ? null : v.UploadedByEmail, v.ExpiresOn, v.Position, v.RemovedAtUtc is not null)).ToList(),
             reviews.Select(r => new DocumentReviewResult(r.VersionNumber, r.Decision, r.Note, isOwner ? null : r.ReviewerEmail, r.ReviewedAtUtc)).ToList());
     }
 }
@@ -530,7 +546,8 @@ public static class UploadRules
 }
 
 /// <summary>Uploads a file into a slot (or a new version of it). A candidate uploads for themselves; document staff can upload for a candidate.</summary>
-public record UploadDocumentCommand(Guid? CandidateId, Guid DocumentTypeId, Guid? ApplicationId, DateOnly? ExpiresOn, string FileName, Stream Content) : ICommand<DocumentDetail>;
+/// <param name="Position">For a document that holds several files: which file this replaces. Leave it out to add another file.</param>
+public record UploadDocumentCommand(Guid? CandidateId, Guid DocumentTypeId, Guid? ApplicationId, DateOnly? ExpiresOn, string FileName, Stream Content, int? Position = null) : ICommand<DocumentDetail>;
 
 public class UploadDocumentHandler(
     IAppDbContext db,
@@ -605,15 +622,40 @@ public class UploadDocumentHandler(
         var document = await db.CandidateDocuments.FirstOrDefaultAsync(d => d.CandidateId == candidateId && d.DocumentTypeId == type.Id && d.ApplicationId == applicationId, cancellationToken);
         var isNew = document is null;
         document ??= new CandidateDocument(candidateId, type.Id, applicationId);
+        // Staff sent this back for fixes, so this upload is the answer they are waiting for.
+        var resubmission = byCandidate && !isNew && document.Status == DocumentStatus.NeedsResubmission;
+
+        // Which file of the document this is. A single-file document is always file 1 (a new upload replaces it).
+        var position = 1;
+        if (type.AllowsMultipleFiles && type.Purpose == DocumentPurpose.None)
+        {
+            var existing = isNew ? [] : await db.DocumentVersions.AsNoTracking().Where(v => v.DocumentId == document.Id).ToListAsync(cancellationToken);
+            var live = DocumentFiles.Live(existing);
+            if (command.Position is { } replacing)
+            {
+                if (!live.Any(f => f.Position == replacing)) throw new DomainException("That file is no longer in the list.");
+                position = replacing;
+            }
+            else
+            {
+                if (live.Count >= CandidateDocument.MaxFiles) throw new DomainException($"You can add up to {CandidateDocument.MaxFiles} files to this document. Remove one first, or replace one.");
+                position = existing.Count == 0 ? 1 : existing.Max(v => v.Position) + 1;
+            }
+        }
+        else if (command.Position is not null and not 1)
+        {
+            throw new DomainException("This document is a single file.");
+        }
+
         var key = $"candidates/{candidateId}/{document.Id}/v{document.CurrentVersion + 1}-{Guid.NewGuid():N}";
-        var version = document.NewVersion(key, fileName, contentType, bytes.Length, hash, command.ExpiresOn, userId, current.Email, clock.UtcNow, byCandidate);
+        var version = document.NewVersion(key, fileName, contentType, bytes.Length, hash, command.ExpiresOn, userId, current.Email, clock.UtcNow, byCandidate, position);
 
         await storage.PutAsync(key, new MemoryStream(buffer.GetBuffer(), 0, (int)buffer.Length, writable: false), contentType, cancellationToken);
         try
         {
             if (isNew) db.CandidateDocuments.Add(document);
             db.DocumentVersions.Add(version);
-            audit.Add(AuditAction.DocumentUploaded, entityType: nameof(CandidateDocument), entityId: document.Id.ToString(), details: new { type = type.Name, version = version.VersionNumber, bytes = bytes.Length });
+            audit.Add(AuditAction.DocumentUploaded, entityType: nameof(CandidateDocument), entityId: document.Id.ToString(), details: new { type = type.Name, version = version.VersionNumber, file = position, bytes = bytes.Length });
             await db.SaveChangesAsync(cancellationToken);
         }
         catch
@@ -622,6 +664,13 @@ public class UploadDocumentHandler(
             try { await storage.DeleteAsync(key, CancellationToken.None); }
             catch (Exception ex) { logger.LogWarning(ex, "Couldn't remove an orphaned upload"); }
             throw;
+        }
+
+        if (resubmission && !string.IsNullOrWhiteSpace(notify.Value.NotifyEmail))
+        {
+            // Only the first upload after a document is sent back finds it in that state, so this goes out once per round, however many files follow.
+            var student = await db.CandidateProfiles.AsNoTracking().Where(p => p.Id == candidateId).Select(p => p.FirstName + " " + p.LastName).FirstAsync(cancellationToken);
+            await RegisterCandidateHandler.SendSafely(email, EmailTemplates.DocumentResubmitted(notify.Value.NotifyEmail.Trim(), student, type.Name, $"{urls.WebBaseUrl}/staff/candidates/{candidateId}"), logger, cancellationToken);
         }
 
         // A student's offer letter is news for staff, who then record the offer. A link only, like every email here.
@@ -691,6 +740,7 @@ public class ReviewDocumentHandler(IAppDbContext db, ICurrentUser current, IAudi
             throw new DomainException("Visa documents aren't reviewed here. They are collected so the visa application can be submitted on the visa platform.");
         }
 
+        if (!DocumentFiles.Live(await db.DocumentVersions.AsNoTracking().Where(v => v.DocumentId == document.Id).ToListAsync(cancellationToken)).Any()) throw new DomainException("There is no file to review.");
         var review = document.Review(command.Decision, command.Note, reviewerId, current.Email, clock.UtcNow);
         db.DocumentReviews.Add(review);
         audit.Add(AuditAction.DocumentReviewed, entityType: nameof(CandidateDocument), entityId: document.Id.ToString(), details: new { decision = command.Decision.ToString(), version = review.VersionNumber });
@@ -713,12 +763,36 @@ public class DownloadDocumentHandler(IAppDbContext db, ICurrentUser current, IAu
 {
     public async ValueTask<FileDownload> Handle(DownloadDocumentQuery query, CancellationToken cancellationToken)
     {
-        var (document, _) = await DocumentAccess.LoadAsync(db, current, query.DocumentId, track: false, cancellationToken);
-        var number = query.VersionNumber ?? document.CurrentVersion;
+        var (document, isOwner) = await DocumentAccess.LoadAsync(db, current, query.DocumentId, track: false, cancellationToken);
+        // With no version asked for, the most recent file still in the document.
+        var number = query.VersionNumber ?? DocumentFiles.Live(await db.DocumentVersions.AsNoTracking().Where(v => v.DocumentId == document.Id).ToListAsync(cancellationToken)).Select(v => v.VersionNumber).DefaultIfEmpty(document.CurrentVersion).Max();
         var version = await db.DocumentVersions.AsNoTracking().FirstOrDefaultAsync(v => v.DocumentId == document.Id && v.VersionNumber == number, cancellationToken) ?? throw new NotFoundException("Version not found.");
+        // A file taken out of the set stays on record for staff, but the student no longer sees it.
+        if (isOwner && version.RemovedAtUtc is not null) throw new NotFoundException("Version not found.");
         audit.Add(AuditAction.DocumentDownloaded, entityType: nameof(CandidateDocument), entityId: document.Id.ToString(), details: new { version = number });
         await db.SaveChangesAsync(cancellationToken);
         return new FileDownload(await storage.GetAsync(version.StorageKey, cancellationToken), version.FileName, version.ContentType);
+    }
+}
+
+/// <summary>Takes one file out of a document that holds several (a wrong upload). The file stays on record; it just stops counting.</summary>
+public record RemoveDocumentFileCommand(Guid DocumentId, int Position) : ICommand<DocumentDetail>;
+
+public class RemoveDocumentFileHandler(IAppDbContext db, ICurrentUser current, IAuditLog audit, IClock clock) : ICommandHandler<RemoveDocumentFileCommand, DocumentDetail>
+{
+    public async ValueTask<DocumentDetail> Handle(RemoveDocumentFileCommand command, CancellationToken cancellationToken)
+    {
+        var (document, isOwner) = await DocumentAccess.LoadAsync(db, current, command.DocumentId, track: true, cancellationToken);
+        var type = await db.DocumentTypes.AsNoTracking().FirstAsync(t => t.Id == document.DocumentTypeId, cancellationToken);
+        if (!type.AllowsMultipleFiles || type.Purpose != DocumentPurpose.None) throw new DomainException("This document is a single file. Replace it instead.");
+        if (isOwner && document.Status == DocumentStatus.Accepted) throw new DomainException("This document has been accepted. Ask your counsellor if it needs changing.");
+
+        var versions = await db.DocumentVersions.Where(v => v.DocumentId == document.Id && v.Position == command.Position && v.RemovedAtUtc == null).ToListAsync(cancellationToken);
+        if (versions.Count == 0) throw new NotFoundException("That file is no longer in the list.");
+        foreach (var v in versions) v.Remove(clock.UtcNow);
+        audit.Add(AuditAction.DocumentFileRemoved, entityType: nameof(CandidateDocument), entityId: document.Id.ToString(), details: new { type = type.Name, file = command.Position });
+        await db.SaveChangesAsync(cancellationToken);
+        return await new GetDocumentHandler(db, current).Handle(new GetDocumentQuery(document.Id), cancellationToken);
     }
 }
 
@@ -740,7 +814,7 @@ public class ListReviewQueueHandler(IAppDbContext db, ICurrentUser current) : IQ
         current.RequireAny(Guard.CaseWorkers);
         // Waiting to be looked at, unless a particular status is asked for.
         var visaOnly = (await Slots.VisaOnlyTypeIdsAsync(db, cancellationToken)).ToList();
-        var documents = db.CandidateDocuments.AsNoTracking().Where(d => d.CurrentVersion > 0 && !visaOnly.Contains(d.DocumentTypeId));
+        var documents = db.CandidateDocuments.AsNoTracking().Where(d => d.CurrentVersion > 0 && !visaOnly.Contains(d.DocumentTypeId) && db.DocumentVersions.Any(v => v.DocumentId == d.Id && v.RemovedAtUtc == null));
         documents = query.Status is { } status ? documents.Where(d => d.Status == status) : documents.Where(d => d.Status == DocumentStatus.Uploaded || d.Status == DocumentStatus.UnderReview);
 
         var rows = from d in documents
@@ -752,6 +826,13 @@ public class ListReviewQueueHandler(IAppDbContext db, ICurrentUser current) : IQ
                    select new { d.Id, d.CandidateId, c.FirstName, c.LastName, TypeName = t.Name, d.Status, d.CurrentVersion, v.FileName, v.UploadedAtUtc };
         var total = await rows.CountAsync(cancellationToken);
         var page = await rows.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).ToListAsync(cancellationToken);
-        return new PagedResult<ReviewQueueItem>(page.Select(r => new ReviewQueueItem(r.Id, r.CandidateId, $"{r.FirstName} {r.LastName}", r.TypeName, r.Status, r.CurrentVersion, r.FileName, r.UploadedAtUtc)).ToList(), query.Page, query.PageSize, total);
+        var ids = page.Select(r => r.Id).ToList();
+        var liveByDocument = (await db.DocumentVersions.AsNoTracking().Where(v => ids.Contains(v.DocumentId)).ToListAsync(cancellationToken)).GroupBy(v => v.DocumentId).ToDictionary(g => g.Key, g => DocumentFiles.Live(g));
+        return new PagedResult<ReviewQueueItem>(page.Select(r =>
+        {
+            var live = liveByDocument.GetValueOrDefault(r.Id) ?? [];
+            var latest = live.OrderByDescending(f => f.VersionNumber).FirstOrDefault();
+            return new ReviewQueueItem(r.Id, r.CandidateId, $"{r.FirstName} {r.LastName}", r.TypeName, r.Status, r.CurrentVersion, live.Count > 1 ? $"{live.Count} files" : latest?.FileName ?? r.FileName, latest?.UploadedAtUtc ?? r.UploadedAtUtc, Math.Max(1, live.Count));
+        }).ToList(), query.Page, query.PageSize, total);
     }
 }
