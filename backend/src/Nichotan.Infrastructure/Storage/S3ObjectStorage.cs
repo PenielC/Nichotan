@@ -9,6 +9,12 @@ namespace Nichotan.Infrastructure.Storage;
 
 public class StorageOptions
 {
+    /// <summary>Which storage to use: "S3" (default; any S3-compatible host) or "AzureBlob".</summary>
+    public string Provider { get; set; } = "S3";
+
+    /// <summary>Settings for the AzureBlob provider. The container name is <see cref="Bucket"/>.</summary>
+    public AzureBlobOptions AzureBlob { get; set; } = new();
+
     /// <summary>S3 endpoint for S3-compatible hosts (R2, B2, Spaces, SeaweedFS…). Leave empty for AWS S3.</summary>
     public string? ServiceUrl { get; set; }
 
@@ -24,11 +30,20 @@ public class StorageOptions
     public bool CreateBucketIfMissing { get; set; }
 }
 
+public class AzureBlobOptions
+{
+    /// <summary>Storage account blob endpoint, e.g. https://account.blob.core.windows.net. Signs in with the app's managed identity.</summary>
+    public string? ServiceUri { get; set; }
+
+    /// <summary>Connection string, for local development against Azurite. Leave empty in Azure.</summary>
+    public string? ConnectionString { get; set; }
+}
+
 /// <summary>
 /// Private object storage over the S3 API. Objects are written without public ACLs and only reachable through
 /// short-lived presigned URLs or the API; the database keeps metadata and keys, never file contents.
 /// </summary>
-public class S3ObjectStorage : IObjectStorage, IDisposable
+public class S3ObjectStorage : IObjectStorage, IStorageInitializer, IDisposable
 {
     private readonly AmazonS3Client _client;
     private readonly StorageOptions _options;

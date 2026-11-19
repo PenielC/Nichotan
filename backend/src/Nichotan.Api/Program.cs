@@ -107,7 +107,20 @@ builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>("database", tags: ["ready"])
     .AddCheck<StorageHealthCheck>("storage", tags: ["ready"]);
 
-builder.Services.Configure<ForwardedHeadersOptions>(o => o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto);
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Behind a hosting platform's ingress (Azure Container Apps) the sender is not loopback, so by default these headers would be
+    // ignored and every client would look like one IP (breaking per-IP rate limits). Only trust them when told to, and say how many
+    // proxies sit in front: the API is only reachable through that ingress.
+    var hops = builder.Configuration.GetValue<int>("ForwardedHeaders:ProxyCount");
+    if (hops > 0)
+    {
+        o.KnownIPNetworks.Clear();
+        o.KnownProxies.Clear();
+        o.ForwardLimit = hops;
+    }
+});
 
 var app = builder.Build();
 
@@ -148,7 +161,7 @@ using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetRequiredService<DbInitializer>().InitializeAsync();
     if (app.Configuration.GetValue<bool>("Storage:CreateBucketIfMissing"))
     {
-        await scope.ServiceProvider.GetRequiredService<S3ObjectStorage>().EnsureBucketAsync();
+        await scope.ServiceProvider.GetRequiredService<IStorageInitializer>().EnsureBucketAsync();
     }
 }
 

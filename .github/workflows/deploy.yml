@@ -1,0 +1,158 @@
+name: Build, test and deploy to Azure
+
+# Pull requests run the checks only. A push to main also deploys. "Run workflow" deploys main too, or re-deploys an earlier
+# image tag (a rollback) when you give one. Setup steps are in docs/deployment.md.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      rollback_tag:
+        description: 'Optional: deploy this existing image tag (a commit SHA) instead of building the current code'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: nichotan_test
+          POSTGRES_USER: nichotan
+          POSTGRES_PASSWORD: nichotan_local_dev
+        ports: ['5438:5432']
+        options: >-
+          --health-cmd "pg_isready -U nichotan -d nichotan_test"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # The Azure Blob storage tests run against the Azurite emulator.
+      - name: Start Azurite
+        run: |
+          npm install -g azurite
+          nohup azurite-blob --blobHost 127.0.0.1 --blobPort 10010 --location /tmp/azurite --skipApiVersionCheck > /tmp/azurite.log 2>&1 &
+          for i in $(seq 1 20); do (echo > /dev/tcp/127.0.0.1/10010) 2>/dev/null && break; sleep 1; done
+      - run: dotnet test backend/Nichotan.slnx --configuration Release
+
+  frontend:
+    name: Frontend checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  infra:
+    name: Check infrastructure files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Compiles the Bicep file: catches syntax and type mistakes without needing an Azure login.
+      - run: az bicep build --file infra/main.bicep --stdout > /dev/null
+
+  deploy:
+    name: Deploy to Azure
+    needs: [backend, frontend, infra]
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    # Add required reviewers to the "production" environment in GitHub to make every deployment wait for approval.
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      RG: ${{ vars.AZURE_RESOURCE_GROUP }}
+      TAG: ${{ inputs.rollback_tag || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Pass 1: registry, database, storage, email. (Safe to repeat; nothing is recreated.)
+      - name: Provision infrastructure
+        id: infra
+        run: |
+          az deployment group create --resource-group "$RG" --name "nichotan-infra-${{ github.run_number }}" \
+            --template-file infra/main.bicep \
+            --parameters deployApps=false \
+              postgresAdminPassword="${{ secrets.POSTGRES_ADMIN_PASSWORD }}" \
+              jwtSecret="${{ secrets.JWT_SECRET }}" \
+              emailDataLocation="${{ vars.EMAIL_DATA_LOCATION || 'Europe' }}" \
+              notifyEmail="${{ vars.NOTIFY_EMAIL || 'enquiries@nichotan.com' }}"
+          echo "registry=$(az deployment group show -g "$RG" -n "nichotan-infra-${{ github.run_number }}" --query properties.outputs.registryName.value -o tsv)" >> "$GITHUB_OUTPUT"
+
+      # Build and push both images, unless this run is a rollback to images that already exist.
+      - name: Build and push images
+        if: ${{ inputs.rollback_tag == '' }}
+        run: |
+          az acr login --name "${{ steps.infra.outputs.registry }}"
+          REG="${{ steps.infra.outputs.registry }}.azurecr.io"
+          docker build -t "$REG/nichotan-api:$TAG" backend
+          docker build -t "$REG/nichotan-web:$TAG" frontend
+          docker push "$REG/nichotan-api:$TAG"
+          docker push "$REG/nichotan-web:$TAG"
+
+      # Pass 2: the apps. The API applies database migrations as it starts.
+      - name: Deploy apps
+        id: apps
+        run: |
+          REG="${{ steps.infra.outputs.registry }}.azurecr.io"
+          az deployment group create --resource-group "$RG" --name "nichotan-apps-${{ github.run_number }}" \
+            --template-file infra/main.bicep \
+            --parameters deployApps=true \
+              apiImage="$REG/nichotan-api:$TAG" webImage="$REG/nichotan-web:$TAG" \
+              postgresAdminPassword="${{ secrets.POSTGRES_ADMIN_PASSWORD }}" \
+              jwtSecret="${{ secrets.JWT_SECRET }}" \
+              bootstrapAdminEmail="${{ vars.BOOTSTRAP_ADMIN_EMAIL }}" \
+              bootstrapAdminPassword="${{ secrets.BOOTSTRAP_ADMIN_PASSWORD }}" \
+              emailDataLocation="${{ vars.EMAIL_DATA_LOCATION || 'Europe' }}" \
+              notifyEmail="${{ vars.NOTIFY_EMAIL || 'enquiries@nichotan.com' }}" \
+              webBaseUrl="${{ vars.WEB_BASE_URL }}"
+          echo "url=$(az deployment group show -g "$RG" -n "nichotan-apps-${{ github.run_number }}" --query properties.outputs.generatedWebUrl.value -o tsv)" >> "$GITHUB_OUTPUT"
+
+      # The API is not public; reaching it through the web app proves the whole chain (web -> API -> database).
+      - name: Smoke test
+        run: |
+          URL="${{ steps.apps.outputs.url }}"
+          echo "Checking $URL"
+          for i in $(seq 1 30); do
+            web=$(curl -s -o /dev/null -w '%{http_code}' "$URL/healthz" || true)
+            api=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/auth/login" -H 'content-type: application/json' -d '{}' || true)
+            echo "attempt $i: web=$web api=$api"
+            if [ "$web" = "200" ] && { [ "$api" = "400" ] || [ "$api" = "401" ] || [ "$api" = "422" ]; }; then echo "Healthy"; exit 0; fi
+            sleep 10
+          done
+          echo "The site did not come up. Check the container logs in the Azure portal (Log Analytics)." >&2
+          exit 1

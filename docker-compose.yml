@@ -1,6 +1,7 @@
 # Local development services. Ports avoid the other projects on this machine.
 #   Postgres  localhost:5438
 #   S3        localhost:9010 (SeaweedFS, S3-compatible)
+#   Azurite   localhost:10010 (Azure Blob emulator)
 #   Mailpit   localhost:1028 (SMTP), http://localhost:8028 (inbox UI)
 # Credentials here are for local development only; never reuse them anywhere else.
 name: nichotan
@@ -35,6 +36,14 @@ services:
     volumes:
       - nichotan_s3:/data
       - ./docker/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+
+  # Local Azure Blob Storage emulator, used to test the AzureBlob storage provider that production uses.
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: nichotan-azurite
+    command: azurite-blob --blobHost 0.0.0.0 --blobPort 10000 --skipApiVersionCheck
+    ports:
+      - "10010:10000"
 
   mailpit:
     image: axllent/mailpit:latest

@@ -46,6 +46,7 @@ public static class DependencyInjection
         services.Configure<AppOptions>(configuration.GetSection("App"));
         services.Configure<Nichotan.Application.Reminders.ReminderOptions>(configuration.GetSection("Reminders"));
         services.Configure<SmtpOptions>(configuration.GetSection("Smtp"));
+        services.Configure<AcsEmailOptions>(configuration.GetSection("Email:Acs"));
         services.Configure<StorageOptions>(configuration.GetSection("Storage"));
         services.Configure<BootstrapOptions>(configuration.GetSection("Bootstrap"));
 
@@ -54,10 +55,28 @@ public static class DependencyInjection
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuditLog, AuditLog>();
         services.AddScoped<IAppUrls, AppUrls>();
-        services.AddKeyedScoped<IEmailSender, SmtpEmailSender>(LoggingEmailSender.InnerKey);
+        // Outgoing email: SMTP (default; Mailpit locally) or Azure Communication Services. Either way it is wrapped by the message log.
+        if (string.Equals(configuration["Email:Provider"], "Acs", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddKeyedScoped<IEmailSender, AcsEmailSender>(LoggingEmailSender.InnerKey);
+        }
+        else
+        {
+            services.AddKeyedScoped<IEmailSender, SmtpEmailSender>(LoggingEmailSender.InnerKey);
+        }
         services.AddScoped<IEmailSender, LoggingEmailSender>();
-        services.AddSingleton<S3ObjectStorage>();
-        services.AddSingleton<IObjectStorage>(sp => sp.GetRequiredService<S3ObjectStorage>());
+        if (string.Equals(configuration["Storage:Provider"], "AzureBlob", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddSingleton<AzureBlobObjectStorage>();
+            services.AddSingleton<IObjectStorage>(sp => sp.GetRequiredService<AzureBlobObjectStorage>());
+            services.AddSingleton<IStorageInitializer>(sp => sp.GetRequiredService<AzureBlobObjectStorage>());
+        }
+        else
+        {
+            services.AddSingleton<S3ObjectStorage>();
+            services.AddSingleton<IObjectStorage>(sp => sp.GetRequiredService<S3ObjectStorage>());
+            services.AddSingleton<IStorageInitializer>(sp => sp.GetRequiredService<S3ObjectStorage>());
+        }
         services.AddScoped<DbInitializer>();
         services.AddSingleton<IApplicationFormPdf, ApplicationFormPdf>();
         return services;
