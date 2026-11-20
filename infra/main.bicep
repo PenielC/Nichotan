@@ -47,6 +47,12 @@ param notifyEmail string = 'enquiries@nichotan.com'
 @description('The public address people use, with no trailing slash. Leave empty to use the generated Azure address; set it once a custom domain is attached.')
 param webBaseUrl string = ''
 
+@description('Your own address for the site, e.g. app.nichotan.com (no https://). Leave empty until DNS is set up and the domain is added in the portal.')
+param customDomain string = ''
+
+@description('Resource id of the managed certificate for customDomain, created in the portal (see docs/deployment.md). Empty = domain added but not yet secured.')
+param customDomainCertificateId string = ''
+
 @description('Storage redundancy. Standard_LRS is cheapest; Standard_ZRS survives a datacentre failure.')
 @allowed(['Standard_LRS', 'Standard_ZRS', 'Standard_GRS'])
 param storageSku string = 'Standard_ZRS'
@@ -233,7 +239,7 @@ resource appEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
 // Addresses are derived from the environment's domain so the two apps can refer to each other without a circular dependency.
 var apiHost = '${apiAppName}.internal.${appEnv.properties.defaultDomain}'
 var webHost = '${webAppName}.${appEnv.properties.defaultDomain}'
-var publicUrl = empty(webBaseUrl) ? 'https://${webHost}' : webBaseUrl
+var publicUrl = !empty(webBaseUrl) ? webBaseUrl : (empty(customDomain) ? 'https://${webHost}' : 'https://${customDomain}')
 
 var registryConfig = [
   {
@@ -332,7 +338,20 @@ resource webApp 'Microsoft.App/containerApps@2024-03-01' = if (deployApps) {
     managedEnvironmentId: appEnv.id
     configuration: {
       activeRevisionsMode: 'Single'
-      ingress: { external: true, targetPort: 8080, transport: 'auto', allowInsecure: false }
+      ingress: {
+        external: true
+        targetPort: 8080
+        transport: 'auto'
+        allowInsecure: false
+        // Must be repeated on every deployment, or the domain would be removed from the app.
+        customDomains: empty(customDomain) ? [] : [
+          {
+            name: customDomain
+            bindingType: empty(customDomainCertificateId) ? 'Disabled' : 'SniEnabled'
+            certificateId: empty(customDomainCertificateId) ? null : customDomainCertificateId
+          }
+        ]
+      }
       registries: registryConfig
     }
     template: {

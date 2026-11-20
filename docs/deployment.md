@@ -61,7 +61,8 @@ Under that environment (or repository) add:
 | Variable | `BOOTSTRAP_ADMIN_EMAIL` | the first administrator's email |
 | Variable | `NOTIFY_EMAIL` | mailbox told about enquiries and applications (default `enquiries@nichotan.com`) |
 | Variable | `EMAIL_DATA_LOCATION` | where email data is kept: `Africa`, `Europe`, `UK`, `United States`… (default `Europe`) |
-| Variable | `WEB_BASE_URL` | leave empty at first; set to `https://yourdomain` once a custom domain is attached |
+| Variable | `WEB_BASE_URL` | normally leave empty (the address is taken from `CUSTOM_DOMAIN`) |
+| Variable | `CUSTOM_DOMAIN`, `CUSTOM_DOMAIN_CERT_ID` | added later: see "Using Nichotan's own domain" |
 | Secret | `POSTGRES_ADMIN_PASSWORD` | a long random password (`openssl rand -base64 32`) |
 | Secret | `JWT_SECRET` | a different long random value (at least 32 characters) |
 | Secret | `BOOTSTRAP_ADMIN_PASSWORD` | the first administrator's temporary password (see "After the first deployment") |
@@ -89,7 +90,20 @@ The site address is printed by the last step (`https://nichotan-web.<random>.<re
 
 ## Using Nichotan's own domain
 
-**Website.** In the Azure portal open the `nichotan-web` Container App → Custom domains → add your domain, create the DNS records it shows, and add a managed certificate. Then set the GitHub variable `WEB_BASE_URL` to `https://yourdomain` and re-run the workflow (it is used in email links and the allowed origin).
+**Website** (for example `app.nichotan.com`). The domain has to be recorded in the deployment as well as in the portal, otherwise the next deployment removes it.
+
+1. Push the version of `infra/main.bicep` and the workflow that know about `customDomain` (they do from 2026-11-19) and let it deploy once.
+2. Find the two values DNS needs:
+   ```powershell
+   az containerapp env show -g nichotan-prod -n nichotan-env --query "{ip:properties.staticIp, verificationId:properties.customDomainConfiguration.customDomainVerificationId}" -o json
+   ```
+3. At the domain provider create: an **A** record `app` -> the `ip`, and a **TXT** record `asuid.app` -> the `verificationId`. (A **CNAME** `app` -> the web app's generated address works instead of the A record, and does not break if the IP ever changes.) Wait until it resolves: `nslookup app.nichotan.com`.
+4. In the portal: Container App `nichotan-web` -> Custom domains -> Add custom domain -> your domain -> **Managed certificate** -> validate -> Add. Wait for the certificate to show *Succeeded*.
+5. Get the certificate's resource id:
+   ```powershell
+   az containerapp env certificate list -g nichotan-prod -n nichotan-env --query "[].{name:name, id:id}" -o table
+   ```
+6. In GitHub (environment `production`) add variables `CUSTOM_DOMAIN` = `app.nichotan.com` and `CUSTOM_DOMAIN_CERT_ID` = that id. Re-run the workflow: from now on every deployment keeps the domain, and email links and the allowed origin use `https://app.nichotan.com`.
 
 **Email.** In Azure: the Email Communication Service → Domains → Add custom domain → add the SPF, DKIM and verification DNS records shown → verify. Connect it to the Communication Service, then change the sender: set `Email__Acs__FromAddress` (in `infra/main.bicep`, `Email__Acs__FromAddress`) to an address on the verified domain, e.g. `no-reply@yourdomain`.
 

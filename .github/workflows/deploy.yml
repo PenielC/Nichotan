@@ -139,7 +139,9 @@ jobs:
               bootstrapAdminPassword="${{ secrets.BOOTSTRAP_ADMIN_PASSWORD }}" \
               emailDataLocation="${{ vars.EMAIL_DATA_LOCATION || 'Europe' }}" \
               notifyEmail="${{ vars.NOTIFY_EMAIL || 'enquiries@nichotan.com' }}" \
-              webBaseUrl="${{ vars.WEB_BASE_URL }}"
+              webBaseUrl="${{ vars.WEB_BASE_URL }}" \
+              customDomain="${{ vars.CUSTOM_DOMAIN }}" \
+              customDomainCertificateId="${{ vars.CUSTOM_DOMAIN_CERT_ID }}"
           echo "url=$(az deployment group show -g "$RG" -n "nichotan-apps-${{ github.run_number }}" --query properties.outputs.generatedWebUrl.value -o tsv)" >> "$GITHUB_OUTPUT"
 
       # The API is not public; reaching it through the web app proves the whole chain (web -> API -> database).
