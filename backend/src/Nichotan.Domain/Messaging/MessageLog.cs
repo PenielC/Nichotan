@@ -22,8 +22,9 @@ public class MessageLog : Entity
 {
     private MessageLog() { }
 
-    public MessageLog(MessageChannel channel, string subject, string recipient, MessageState state, string? error, DateTime attemptedAtUtc)
+    public MessageLog(MessageChannel channel, string subject, string recipient, MessageState state, string? error, DateTime attemptedAtUtc, string sender = "Automated")
     {
+        Sender = Trim(sender, 20);
         Channel = channel;
         Subject = Trim(subject, 200);
         Recipient = recipient;
@@ -46,6 +47,9 @@ public class MessageLog : Entity
     public string? Error { get; private set; }
 
     public DateTime AttemptedAtUtc { get; private set; }
+
+    /// <summary>Which of the organisation's addresses sent it: "Automated" (system mail) or "Info" (a reply-welcome mailbox). Not the address itself, which is configuration.</summary>
+    public string Sender { get; private set; } = "Automated";
 
     /// <summary>"jane.doe@example.com" becomes "j***@example.com"; a phone number keeps its country code and last two digits.</summary>
     public static string MaskRecipient(string recipient)

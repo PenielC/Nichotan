@@ -25,6 +25,49 @@ param webImage string = ''
 @description('Where Communication Services stores its data (e.g. Africa, Europe, United States, UK).')
 param emailDataLocation string = 'Europe'
 
+@description('Send email through an existing mailbox instead of Azure Communication Services: the SMTP server name from your email host (e.g. mail.nichotan.com). Empty = use Azure Communication Services.')
+param smtpHost string = ''
+
+@description('SMTP port. 587 (STARTTLS) is what the app supports; implicit-TLS port 465 is not.')
+param smtpPort int = 587
+
+@description('Mailbox sign-in name, usually the full address, e.g. no-reply@nichotan.com.')
+param smtpUsername string = ''
+
+@secure()
+param smtpPassword string = ''
+
+@description('Address shown as the sender of automated email (account links, notices to staff), e.g. DoNotReply@nichotan.com. Empty = the mailbox address.')
+param smtpFromAddress string = ''
+
+@description('Where replies to automated email go, e.g. info@nichotan.com, so a reply to a no-reply address is not lost. Empty = none.')
+param smtpReplyTo string = ''
+
+@description('Second sender for emails to students that invite a reply, e.g. info@nichotan.com. Empty = everything is sent from the automated address.')
+param smtpInfoFromAddress string = ''
+
+@description('Sign-in name of the Info mailbox, only if it has its own login. Empty = the automated mailbox login is used for both.')
+param smtpInfoUsername string = ''
+
+@secure()
+param smtpInfoPassword string = ''
+
+@description('Azure Communication Services only: second sender on the same verified domain (a MailFrom address), e.g. info@nichotan.com. Empty = automated address only.')
+param emailInfoFromAddress string = ''
+
+@description('Azure Communication Services only: where replies to automated email go. Empty = none.')
+param emailReplyTo string = ''
+
+var useSmtp = !empty(smtpHost)
+// The Info mailbox has its own login only when BOTH name and password are given; the app ignores a half-given pair, and no placeholder is ever passed as a password.
+var infoHasLogin = !empty(smtpInfoUsername) && !empty(smtpInfoPassword)
+
+@description('Your own email sending domain, e.g. nichotan.com. Creates the domain in Azure so its DNS records can be read; leave empty to use the generated azurecomm.net sender.')
+param emailCustomDomain string = ''
+
+@description('Sender address on the VERIFIED custom domain, e.g. no-reply@nichotan.com. Empty = keep using the generated sender.')
+param emailFromAddress string = ''
+
 @description('PostgreSQL administrator login and password.')
 param postgresAdminLogin string = 'nichotanadmin'
 @secure()
@@ -210,13 +253,25 @@ resource emailDomain 'Microsoft.Communication/emailServices/domains@2023-04-01' 
   properties: { domainManagement: 'AzureManaged' }
 }
 
+// Your own sender domain. Declared here so a redeploy keeps it. The domain still has to be verified (DNS records) before it can be linked:
+// set emailCustomDomain first, add the records, verify in the portal, then set emailFromAddress.
+resource emailCustomDomainRes 'Microsoft.Communication/emailServices/domains@2023-04-01' = if (!empty(emailCustomDomain)) {
+  parent: emailService
+  name: emailCustomDomain
+  location: 'global'
+  tags: tags
+  properties: { domainManagement: 'CustomerManaged' }
+}
+
+var linkCustomDomain = !empty(emailCustomDomain) && !empty(emailFromAddress)
+
 resource communication 'Microsoft.Communication/communicationServices@2023-04-01' = {
   name: '${namePrefix}-comm-${unique}'
   location: 'global'
   tags: tags
   properties: {
     dataLocation: emailDataLocation
-    linkedDomains: [emailDomain.id]
+    linkedDomains: linkCustomDomain ? [emailDomain.id, emailCustomDomainRes.id] : [emailDomain.id]
   }
 }
 
@@ -253,8 +308,11 @@ var apiSecrets = concat(
     { name: 'db-connection', value: 'Host=${postgres.properties.fullyQualifiedDomainName};Port=5432;Database=nichotan;Username=${postgresAdminLogin};Password=${postgresAdminPassword};SSL Mode=Require' }
     { name: 'jwt-secret', value: jwtSecret }
     { name: 'acs-connection', value: communication.listKeys().primaryConnectionString }
+    // Container Apps needs a non-empty value for every secret, so a placeholder is used when SMTP is not in play.
+    { name: 'smtp-password', value: empty(smtpPassword) ? 'not-used' : smtpPassword }
   ],
-  empty(bootstrapAdminPassword) ? [] : [{ name: 'bootstrap-admin-password', value: bootstrapAdminPassword }]
+  empty(bootstrapAdminPassword) ? [] : [{ name: 'bootstrap-admin-password', value: bootstrapAdminPassword }],
+  infoHasLogin ? [{ name: 'smtp-info-password', value: smtpInfoPassword }] : []
 )
 
 var apiEnv = concat(
@@ -272,9 +330,20 @@ var apiEnv = concat(
     { name: 'Enquiries__NotifyEmail', value: notifyEmail }
     { name: 'Reminders__Enabled', value: 'true' }
     { name: 'Reminders__TimeZone', value: 'UTC' }
-    { name: 'Email__Provider', value: 'Acs' }
+    { name: 'Email__Provider', value: useSmtp ? 'Smtp' : 'Acs' }
     { name: 'Email__Acs__ConnectionString', secretRef: 'acs-connection' }
-    { name: 'Email__Acs__FromAddress', value: 'DoNotReply@${emailDomain.properties.mailFromSenderDomain}' }
+    { name: 'Email__Acs__FromAddress', value: linkCustomDomain ? emailFromAddress : 'DoNotReply@${emailDomain.properties.mailFromSenderDomain}' }
+    { name: 'Email__Acs__InfoFromAddress', value: emailInfoFromAddress }
+    { name: 'Email__Acs__ReplyTo', value: emailReplyTo }
+    { name: 'Smtp__ReplyTo', value: smtpReplyTo }
+    { name: 'Smtp__Info__FromAddress', value: smtpInfoFromAddress }
+    { name: 'Smtp__Host', value: smtpHost }
+    { name: 'Smtp__Port', value: string(smtpPort) }
+    { name: 'Smtp__EnableSsl', value: 'true' }
+    { name: 'Smtp__Username', value: smtpUsername }
+    { name: 'Smtp__Password', secretRef: 'smtp-password' }
+    { name: 'Smtp__FromAddress', value: empty(smtpFromAddress) ? smtpUsername : smtpFromAddress }
+    { name: 'Smtp__FromName', value: 'Nichotan' }
     { name: 'Storage__Provider', value: 'AzureBlob' }
     { name: 'Storage__Bucket', value: documentsContainer }
     { name: 'Storage__AzureBlob__ServiceUri', value: storage.properties.primaryEndpoints.blob }
@@ -285,7 +354,11 @@ var apiEnv = concat(
     { name: 'Bootstrap__AdminFirstName', value: bootstrapAdminFirstName }
     { name: 'Bootstrap__AdminLastName', value: bootstrapAdminLastName }
   ],
-  empty(bootstrapAdminPassword) ? [] : [{ name: 'Bootstrap__AdminPassword', secretRef: 'bootstrap-admin-password' }]
+  empty(bootstrapAdminPassword) ? [] : [{ name: 'Bootstrap__AdminPassword', secretRef: 'bootstrap-admin-password' }],
+  infoHasLogin ? [
+    { name: 'Smtp__Info__Username', value: smtpInfoUsername }
+    { name: 'Smtp__Info__Password', secretRef: 'smtp-info-password' }
+  ] : []
 )
 
 resource apiApp 'Microsoft.App/containerApps@2024-03-01' = if (deployApps) {

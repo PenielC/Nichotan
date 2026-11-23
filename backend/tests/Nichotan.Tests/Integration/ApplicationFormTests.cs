@@ -1,4 +1,5 @@
 using System.Net;
+using Nichotan.Application.Common;
 using System.Net.Http.Json;
 using System.Text.Json;
 using AwesomeAssertions;
@@ -148,7 +149,7 @@ public class ApplicationFormTests(ApiFactory api)
         (await admin.PostAsJsonAsync($"/api/application-forms/{candidateId}/reopen", new { reason = "" })).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var reopened = await (await admin.PostAsJsonAsync($"/api/application-forms/{candidateId}/reopen", new { reason = "Passport spelling doesn't match." })).Read<JsonElement>();
         reopened.GetProperty("status").GetString().Should().Be("Reopened");
-        api.Emails.Sent.Should().Contain(m => m.To == email && m.Subject.Contains("needs a few changes"));
+        api.Emails.Sent.Should().Contain(m => m.To == email && m.Subject.Contains("needs a few changes") && m.From == EmailSenderKind.Info, "a counsellor-to-student email is sent from the Info address");
 
         var mine = await (await client.GetAsync("/api/application-form")).Read<JsonElement>();
         mine.GetProperty("reopenReason").GetString().Should().Contain("Passport");

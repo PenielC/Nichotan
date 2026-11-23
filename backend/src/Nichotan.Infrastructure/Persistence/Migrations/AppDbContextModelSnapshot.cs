@@ -1183,6 +1183,13 @@ namespace Nichotan.Infrastructure.Persistence.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
 
+                    b.Property<string>("Sender")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Automated");
+
                     b.Property<string>("State")
                         .IsRequired()
                         .HasMaxLength(20)

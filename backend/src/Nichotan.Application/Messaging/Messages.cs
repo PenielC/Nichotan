@@ -6,7 +6,7 @@ using Nichotan.Domain.Messaging;
 
 namespace Nichotan.Application.Messaging;
 
-public record MessageLogEntry(Guid Id, MessageChannel Channel, string Subject, string Recipient, MessageState State, string? Error, DateTime AttemptedAtUtc);
+public record MessageLogEntry(Guid Id, MessageChannel Channel, string Subject, string Recipient, MessageState State, string? Error, DateTime AttemptedAtUtc, string Sender);
 
 public record MessageLogResult(IReadOnlyList<MessageLogEntry> Items, int Sent, int Failed);
 
@@ -22,7 +22,7 @@ public class ListMessageLogHandler(IAppDbContext db, ICurrentUser current) : IQu
         var items = await (query.State is { } state ? all.Where(m => m.State == state) : all)
             .OrderByDescending(m => m.AttemptedAtUtc)
             .Take(100)
-            .Select(m => new MessageLogEntry(m.Id, m.Channel, m.Subject, m.Recipient, m.State, m.Error, m.AttemptedAtUtc))
+            .Select(m => new MessageLogEntry(m.Id, m.Channel, m.Subject, m.Recipient, m.State, m.Error, m.AttemptedAtUtc, m.Sender))
             .ToListAsync(cancellationToken);
         var sent = await all.CountAsync(m => m.State == MessageState.Sent, cancellationToken);
         var failed = await all.CountAsync(m => m.State == MessageState.Failed, cancellationToken);

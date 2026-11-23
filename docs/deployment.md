@@ -63,6 +63,9 @@ Under that environment (or repository) add:
 | Variable | `EMAIL_DATA_LOCATION` | where email data is kept: `Africa`, `Europe`, `UK`, `United States`… (default `Europe`) |
 | Variable | `WEB_BASE_URL` | normally leave empty (the address is taken from `CUSTOM_DOMAIN`) |
 | Variable | `CUSTOM_DOMAIN`, `CUSTOM_DOMAIN_CERT_ID` | added later: see "Using Nichotan's own domain" |
+| Variables | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_FROM_ADDRESS`, `SMTP_REPLY_TO`, `SMTP_INFO_FROM_ADDRESS`, `SMTP_INFO_USERNAME` | optional: send email through your own mailboxes instead of Azure Communication Services. See "Sending from your own mailboxes" |
+| Secret | `SMTP_PASSWORD`, `SMTP_INFO_PASSWORD` | the mailbox passwords for the above |
+| Variables | `EMAIL_INFO_FROM_ADDRESS`, `EMAIL_REPLY_TO` | optional, Azure Communication Services only: a second sender on the verified domain, and where replies go |
 | Secret | `POSTGRES_ADMIN_PASSWORD` | a long random password (`openssl rand -base64 32`) |
 | Secret | `JWT_SECRET` | a different long random value (at least 32 characters) |
 | Secret | `BOOTSTRAP_ADMIN_PASSWORD` | the first administrator's temporary password (see "After the first deployment") |
@@ -106,6 +109,30 @@ The site address is printed by the last step (`https://nichotan-web.<random>.<re
 6. In GitHub (environment `production`) add variables `CUSTOM_DOMAIN` = `app.nichotan.com` and `CUSTOM_DOMAIN_CERT_ID` = that id. Re-run the workflow: from now on every deployment keeps the domain, and email links and the allowed origin use `https://app.nichotan.com`.
 
 **Email.** In Azure: the Email Communication Service → Domains → Add custom domain → add the SPF, DKIM and verification DNS records shown → verify. Connect it to the Communication Service, then change the sender: set `Email__Acs__FromAddress` (in `infra/main.bicep`, `Email__Acs__FromAddress`) to an address on the verified domain, e.g. `no-reply@yourdomain`.
+
+### Sending from your own mailboxes (two senders)
+
+Nichotan sends from two addresses, chosen per email:
+
+| Sender | Example | Used for |
+| --- | --- | --- |
+| **Automated** | `DoNotReply@nichotan.com` | Account links (confirm email, reset password, staff invitation) and every notice to staff |
+| **Info** | `info@nichotan.com` | Emails to a student about their own case, where a reply is welcome: form reopened, document needs attention, offer available, visa submitted, pre-departure checklist ready, biometrics reminder |
+
+Which template uses which is decided in `EmailTemplates.cs` and checked by a test, so a new template cannot be added without choosing. If the Info address is not set, **everything is sent from the Automated address**, so nothing breaks while it is being set up. Automated mail carries a `Reply-To` of the Info address so a reply to a no-reply address is not lost.
+
+To send through mailboxes at your domain host:
+
+| GitHub setting | Value |
+| --- | --- |
+| Variable `SMTP_HOST` | the host's SMTP server, e.g. `mail.nichotan.com` (the app speaks port **587** with STARTTLS, not 465) |
+| Variable `SMTP_USERNAME` / Secret `SMTP_PASSWORD` | login of the Automated mailbox |
+| Variable `SMTP_FROM_ADDRESS` | `DoNotReply@nichotan.com` (empty = the username) |
+| Variable `SMTP_REPLY_TO` | `info@nichotan.com` |
+| Variable `SMTP_INFO_FROM_ADDRESS` | `info@nichotan.com` |
+| Variable `SMTP_INFO_USERNAME` / Secret `SMTP_INFO_PASSWORD` | only if the Info mailbox has its own login. Leave both empty if the host lets the Automated login send as `info@`. Give both or neither: a half-given pair is ignored |
+
+Check the host allows **sending as** the Info address with whichever login you use; some hosts reject a `From` that differs from the login. The admin **Messages** page shows, for every email, whether it went from the automated or the info address, so a misbehaving mailbox is easy to spot. With Azure Communication Services instead, add `info@` as a MailFrom address on the verified domain and set `EMAIL_INFO_FROM_ADDRESS` and `EMAIL_REPLY_TO`.
 
 ## Running it day to day
 

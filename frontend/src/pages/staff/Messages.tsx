@@ -18,6 +18,13 @@ interface MessageLogEntry {
   state: MessageState
   error: string | null
   attemptedAtUtc: string
+  /** Which of the organisation's addresses sent it. The address itself is configuration and is not stored. */
+  sender: 'Automated' | 'Info'
+}
+
+const senderLabel: Record<MessageLogEntry['sender'], string> = {
+  Automated: 'automated address',
+  Info: 'info address',
 }
 interface MessageLogResult {
   items: MessageLogEntry[]
@@ -75,7 +82,7 @@ export default function Messages() {
                 <div className="min-w-0">
                   <p className="truncate font-medium text-ink">{m.subject}</p>
                   <p className="text-sm text-muted-foreground">
-                    To {m.recipient} · {formatDateTime(m.attemptedAtUtc)}
+                    To {m.recipient} · from the {senderLabel[m.sender] ?? 'automated address'} · {formatDateTime(m.attemptedAtUtc)}
                   </p>
                   {m.error && <p className="mt-1 text-sm text-destructive">{m.error}</p>}
                 </div>

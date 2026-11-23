@@ -41,7 +41,8 @@ public static class EmailTemplates
         "Your counsellor has reopened your application form so you can correct it. Sign in to see what needs changing, update the form and sign it again.",
         "Open my application form",
         link,
-        "Your earlier submission is kept on record.");
+        "Your earlier submission is kept on record.",
+        EmailSenderKind.Info);
 
     public static EmailMessage DocumentNeedsAttention(string to, string firstName, string link) => Build(
         to,
@@ -50,7 +51,8 @@ public static class EmailTemplates
         "Your counsellor has looked at one of your documents and needs you to upload it again. Sign in to see what to fix.",
         "Open my documents",
         link,
-        "Your earlier upload is kept on record.");
+        "Your earlier upload is kept on record.",
+        EmailSenderKind.Info);
 
     /// <summary>
     /// Tells the team an enquiry has arrived. Like every email here it carries a link, not the person's details: the
@@ -117,7 +119,8 @@ public static class EmailTemplates
         "There's news on one of your applications: your counsellor has recorded an offer. Sign in to see the details and what to do next.",
         "See my application",
         link,
-        "Your counsellor will guide you through the next steps.");
+        "Your counsellor will guide you through the next steps.",
+        EmailSenderKind.Info);
 
     /// <summary>The visa application has been lodged: the student is reminded that biometrics come next.</summary>
     public static EmailMessage VisaSubmitted(string to, string firstName, string link) => Build(
@@ -127,7 +130,8 @@ public static class EmailTemplates
         "Your visa application has been submitted. The next step is your biometrics. When you're asked to give them, attend your appointment, then tell us on your visa page once they're done.",
         "See my visa",
         link,
-        "Your counsellor will guide you through the next steps.");
+        "Your counsellor will guide you through the next steps.",
+        EmailSenderKind.Info);
 
     /// <summary>The pre-departure list has been opened for an approved visa.</summary>
     public static EmailMessage PreDepartureReady(string to, string firstName, string link) => Build(
@@ -137,7 +141,8 @@ public static class EmailTemplates
         "Congratulations on your visa. Your pre-departure checklist is ready: sign in to see what to prepare and bring, and tick things off as you go.",
         "See my checklist",
         link,
-        "Your counsellor will check your list with you.");
+        "Your counsellor will check your list with you.",
+        EmailSenderKind.Info);
 
     /// <summary>A nudge to a student whose visa application is in but whose biometrics aren't marked done. Link only.</summary>
     public static EmailMessage BiometricsReminder(string to, string firstName, string link) => Build(
@@ -147,7 +152,8 @@ public static class EmailTemplates
         "Your visa application is submitted, and we haven't heard that your biometrics are done. If you've been asked to give them, please do. Once you have, tell us on your visa page. If you've already done so, let us know there.",
         "See my visa",
         link,
-        "Your counsellor is here to help if anything is unclear.");
+        "Your counsellor is here to help if anything is unclear.",
+        EmailSenderKind.Info);
 
     /// <summary>The daily note to staff: how many follow-ups are overdue. Counts and a link only, no names.</summary>
     public static EmailMessage StaffDigest(string to, int biometricsOverdue, int palOverdue, int tasksOverdue, string link)
@@ -176,7 +182,7 @@ public static class EmailTemplates
         link,
         "You're receiving this because applications are announced to this address.");
 
-    private static EmailMessage Build(string to, string subject, string firstName, string intro, string cta, string link, string footer)
+    private static EmailMessage Build(string to, string subject, string firstName, string intro, string cta, string link, string footer, EmailSenderKind from = EmailSenderKind.Automated)
     {
         var text = $"Hi {firstName},\n\n{intro}\n\n{cta}: {link}\n\n{footer}\n\nNichotan";
         static string e(string value) => WebUtility.HtmlEncode(value);
@@ -189,6 +195,6 @@ public static class EmailTemplates
               <p style="color:#5b6478;font-size:13px">Nichotan · Your global education partner</p>
             </div>
             """;
-        return new EmailMessage(to, subject, text, html);
+        return new EmailMessage(to, subject, text, html, from);
     }
 }

@@ -60,8 +60,57 @@ public class SmtpOptions
     public bool EnableSsl { get; set; }
     public string? Username { get; set; }
     public string? Password { get; set; }
+    /// <summary>The Automated sender (e.g. DoNotReply@nichotan.com).</summary>
     public string FromAddress { get; set; } = "no-reply@nichotan.local";
     public string FromName { get; set; } = "Nichotan";
+
+    /// <summary>Where replies to Automated emails go (e.g. info@nichotan.com), so a reply to a no-reply address is not lost. Empty = none.</summary>
+    public string? ReplyTo { get; set; }
+
+    /// <summary>The Info sender (e.g. info@nichotan.com), used for emails to students that invite a reply. Leave unset to send them from the Automated address.</summary>
+    public SmtpSenderOverride? Info { get; set; }
+}
+
+/// <summary>
+/// Settings for the Info mailbox. Only FromAddress is required; anything left empty is taken from the main Smtp section, so a provider that
+/// lets one login send as both addresses needs no second password, and one that gives each mailbox its own login needs only Username and Password.
+/// </summary>
+public class SmtpSenderOverride
+{
+    public string? FromAddress { get; set; }
+    public string? FromName { get; set; }
+    public string? Username { get; set; }
+    public string? Password { get; set; }
+    public string? Host { get; set; }
+    public int? Port { get; set; }
+    public bool? EnableSsl { get; set; }
+    public string? ReplyTo { get; set; }
+}
+
+/// <summary>Everything needed to send one email over SMTP, with the Automated/Info choice already made.</summary>
+public record SmtpProfile(string Host, int Port, bool EnableSsl, string? Username, string? Password, string FromAddress, string FromName, string? ReplyTo)
+{
+    /// <summary>Picks the profile for a sender kind. Pure, so the fallback rules are easy to test.</summary>
+    public static SmtpProfile For(SmtpOptions o, EmailSenderKind kind)
+    {
+        var automated = new SmtpProfile(o.Host, o.Port, o.EnableSsl, Blank(o.Username), Blank(o.Password), o.FromAddress, o.FromName, Blank(o.ReplyTo));
+        if (kind != EmailSenderKind.Info || o.Info is not { } i || Blank(i.FromAddress) is not { } from) return automated; // not configured: use the Automated address
+
+        // A separate login is used only when one is given. A password without its username (or the reverse) is a mistake, so it is ignored
+        // rather than mixing the Info address with the other mailbox's login.
+        var ownLogin = Blank(i.Username) is not null && Blank(i.Password) is not null;
+        return new SmtpProfile(
+            Blank(i.Host) ?? o.Host,
+            i.Port ?? o.Port,
+            i.EnableSsl ?? o.EnableSsl,
+            ownLogin ? Blank(i.Username) : automated.Username,
+            ownLogin ? Blank(i.Password) : automated.Password,
+            from,
+            Blank(i.FromName) ?? o.FromName,
+            Blank(i.ReplyTo)); // replies to Info mail go to Info itself: no Reply-To needed
+    }
+
+    static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
 
 /// <summary>
@@ -92,7 +141,7 @@ public class LoggingEmailSender([FromKeyedServices(LoggingEmailSender.InnerKey)]
         {
             using var scope = scopes.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            db.MessageLogs.Add(new MessageLog(MessageChannel.Email, message.Subject, MessageLog.MaskRecipient(message.To), state, error, clock.UtcNow));
+            db.MessageLogs.Add(new MessageLog(MessageChannel.Email, message.Subject, MessageLog.MaskRecipient(message.To), state, error, clock.UtcNow, message.From.ToString()));
             await db.SaveChangesAsync(CancellationToken.None);
         }
         catch (Exception ex)
@@ -102,17 +151,18 @@ public class LoggingEmailSender([FromKeyedServices(LoggingEmailSender.InnerKey)]
     }
 }
 
-/// <summary>Sends through any SMTP server (Mailpit locally; a transactional email provider in production).</summary>
+/// <summary>Sends through any SMTP server (Mailpit locally; the domain's mail host or a transactional provider in production).</summary>
 public class SmtpEmailSender(IOptions<SmtpOptions> options) : IEmailSender
 {
     public async Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
     {
-        var o = options.Value;
-        using var client = new SmtpClient(o.Host, o.Port) { EnableSsl = o.EnableSsl };
-        if (!string.IsNullOrEmpty(o.Username)) client.Credentials = new NetworkCredential(o.Username, o.Password);
+        var p = SmtpProfile.For(options.Value, message.From);
+        using var client = new SmtpClient(p.Host, p.Port) { EnableSsl = p.EnableSsl };
+        if (!string.IsNullOrEmpty(p.Username)) client.Credentials = new NetworkCredential(p.Username, p.Password);
 
-        using var mail = new MailMessage { From = new MailAddress(o.FromAddress, o.FromName), Subject = message.Subject };
+        using var mail = new MailMessage { From = new MailAddress(p.FromAddress, p.FromName), Subject = message.Subject };
         mail.To.Add(message.To);
+        if (!string.IsNullOrEmpty(p.ReplyTo)) mail.ReplyToList.Add(new MailAddress(p.ReplyTo));
         // Both parts as alternate views, so clients pick HTML and the HTML part isn't mislabelled as plain text.
         mail.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(message.TextBody, null, "text/plain"));
         mail.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(message.HtmlBody, null, "text/html"));

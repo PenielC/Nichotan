@@ -467,6 +467,7 @@ public class MessageLogConfiguration : IEntityTypeConfiguration<MessageLog>
         b.Property(m => m.Subject).HasMaxLength(200).IsRequired();
         b.Property(m => m.Recipient).HasMaxLength(120).IsRequired();
         b.Property(m => m.Error).HasMaxLength(300);
+        b.Property(m => m.Sender).HasMaxLength(20).IsRequired().HasDefaultValue("Automated");
         b.HasIndex(m => m.AttemptedAtUtc);
     }
 }

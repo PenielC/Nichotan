@@ -1,4 +1,5 @@
 using System.Net;
+using Nichotan.Application.Common;
 using System.Net.Http.Json;
 using AwesomeAssertions;
 
@@ -21,7 +22,7 @@ public class CandidateAccountTests(ApiFactory api)
         var profile = await (await client.GetAsync("/api/candidates/me")).Read<ProfileDto>();
         profile.Email.Should().Be(email);
         profile.Id.Should().Be(me.CandidateProfileId!.Value);
-        api.Emails.Sent.Should().Contain(m => m.To == email && m.Subject.Contains("Confirm your email"));
+        api.Emails.Sent.Should().Contain(m => m.To == email && m.Subject.Contains("Confirm your email") && m.From == EmailSenderKind.Automated, "an account link is system mail");
     }
 
     [Fact]

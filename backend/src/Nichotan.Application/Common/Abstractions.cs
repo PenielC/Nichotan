@@ -156,7 +156,20 @@ public interface ITokenService
     Guid? ReadMfaChallengeToken(string token);
 }
 
-public record EmailMessage(string To, string Subject, string TextBody, string HtmlBody);
+/// <summary>
+/// Which of Nichotan's addresses an email is sent from. The actual addresses are configuration, not code.
+/// If the Info address is not configured, Info messages go out from the Automated one, so nothing breaks.
+/// </summary>
+public enum EmailSenderKind
+{
+    /// <summary>System mail nobody is expected to answer: account links, notices to staff. Replies are directed to the Info mailbox.</summary>
+    Automated = 0,
+
+    /// <summary>Mail from the team to a student, where a reply is welcome (e.g. info@).</summary>
+    Info = 1,
+}
+
+public record EmailMessage(string To, string Subject, string TextBody, string HtmlBody, EmailSenderKind From = EmailSenderKind.Automated);
 
 public interface IEmailSender
 {

@@ -55,6 +55,23 @@ public class MessageLogTests(ApiFactory api)
     }
 
     [Fact]
+    public async Task The_log_records_which_address_sent_each_email_but_never_the_address_itself()
+    {
+        var auto = $"Auto {Guid.NewGuid():N}";
+        var info = $"Info {Guid.NewGuid():N}";
+        await Sender(false).SendAsync(new EmailMessage("jane.doe@example.com", auto, "t", "<p>h</p>"));
+        await Sender(false).SendAsync(new EmailMessage("jane.doe@example.com", info, "t", "<p>h</p>", EmailSenderKind.Info));
+        // A failure is recorded with the sender too: it tells an administrator WHICH mailbox is misbehaving.
+        var failed = $"InfoFailed {Guid.NewGuid():N}";
+        var act = () => Sender(true).SendAsync(new EmailMessage("jane.doe@example.com", failed, "t", "<p>h</p>", EmailSenderKind.Info));
+        await act.Should().ThrowAsync<InvalidOperationException>();
+
+        (await LogFor(auto)).Should().ContainSingle().Which.Sender.Should().Be("Automated");
+        (await LogFor(info)).Should().ContainSingle().Which.Sender.Should().Be("Info");
+        (await LogFor(failed)).Should().ContainSingle().Which.Sender.Should().Be("Info");
+    }
+
+    [Fact]
     public async Task Only_an_administrator_can_read_the_message_log()
     {
         var admin = await Flows.AdminAsync(api);

@@ -95,6 +95,7 @@ Settings live in `backend/src/Nichotan.Api/appsettings.json` (no secrets) and ar
 - Staff need an authenticator app (TOTP) with recovery codes; candidates may turn it on.
 - Every endpoint is authorized on the server. Candidates can reach only their own records. Opening a candidate's record, access refusals, sign-ins and account changes are written to an append-only audit log.
 - Email links (verification, password reset, staff invitation) are single-use and stored only as hashes.
+- Email is sent from two addresses: **automated** (account links, notices to staff) and **info** (emails to students where a reply is welcome). Replies to automated mail are directed to the info address. See [docs/deployment.md](docs/deployment.md) and BR-11.6.
 - Document storage is private (S3 locally, Azure Blob in production, no public access). Files are reached only through the API, which checks who is asking before it streams a file.
 
 ## Deployment
