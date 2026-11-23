@@ -96,6 +96,14 @@ param customDomain string = ''
 @description('Resource id of the managed certificate for customDomain, created in the portal (see docs/deployment.md). Empty = domain added but not yet secured.')
 param customDomainCertificateId string = ''
 
+// Accepts the certificate's full resource id (what 'az containerapp env certificate list' prints as "id") OR just its name. A bare name is turned into the id,
+// because pasting the name instead of the id is an easy mistake and Azure rejects it with "InvalidCertificateId".
+var certificateResourceId = empty(customDomainCertificateId)
+  ? ''
+  : (startsWith(customDomainCertificateId, '/subscriptions/')
+      ? customDomainCertificateId
+      : resourceId('Microsoft.App/managedEnvironments/managedCertificates', '${namePrefix}-env', customDomainCertificateId))
+
 @description('Storage redundancy. Standard_LRS is cheapest; Standard_ZRS survives a datacentre failure.')
 @allowed(['Standard_LRS', 'Standard_ZRS', 'Standard_GRS'])
 param storageSku string = 'Standard_ZRS'
@@ -420,8 +428,8 @@ resource webApp 'Microsoft.App/containerApps@2024-03-01' = if (deployApps) {
         customDomains: empty(customDomain) ? [] : [
           {
             name: customDomain
-            bindingType: empty(customDomainCertificateId) ? 'Disabled' : 'SniEnabled'
-            certificateId: empty(customDomainCertificateId) ? null : customDomainCertificateId
+            bindingType: empty(certificateResourceId) ? 'Disabled' : 'SniEnabled'
+            certificateId: empty(certificateResourceId) ? null : certificateResourceId
           }
         ]
       }
