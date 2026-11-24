@@ -14,8 +14,8 @@ const home = content.home;
 
 const heroImages = [
   { src: "/images/hero-1.webp", alt: "A Nicho Tan counsellor holding university brochures while advising a student" },
-  { src: "/images/hero-2.webp", alt: "A Nicho Tan graduate celebrating in cap and gown" },
-  { src: "/images/hero-3.webp", alt: "Nicho Tan students on a university campus in Calgary" },
+  { src: "/images/hero-2.webp", alt: "The arched, columned hall of a grand historic building" },
+  { src: "/images/hero-3.webp", alt: "The Calgary skyline at sunset" },
 ];
 
 const strip = [

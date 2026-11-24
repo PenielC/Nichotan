@@ -25,3 +25,6 @@ Thumbs.db
 !.vscode/extensions.json
 
 CLAUDE.md
+
+# Marketing material (flyers, DNS request) is kept out of the repo
+marketing/

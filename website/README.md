@@ -24,6 +24,8 @@ npx serve out      # or any static server, to preview the build
 | Images | `public/images`, produced by `scripts/prepare-images.py` from the originals on the old site |
 | Video | `public/video/nichotan.mp4` (see below) |
 
+**Partners** are one list in `src/components/PartnerLogos.tsx`, shared by the home page (scrolling band and "Show all partners" grid) and the About page. To add one, put the logo in `public/images/partners` and add a line; to remove one, delete its line. A partner with no `file` shows its name on a plain tile (none do at the moment). White-artwork logos are marked `dark` so they sit on a navy tile. The logos added on 2026-11-24 (Thompson Rivers, Kwantlen, North Island, Saskatchewan Polytechnic, Alexander, Columbia, Huron, IU, SRH, University of Europe, Arden, Westcliff) were taken from each school's own website.
+
 Every page keeps its old WordPress address with a trailing slash, so existing links and Google results keep working. The two old test pages (`team_test`, `gallery_playgroudn`) were not migrated.
 
 ## Things that behave differently from the old site

@@ -66,7 +66,8 @@ for name, f in (("jonas", "jonas.jpg"), ("chingombe", "chin.jpg")):
     print(name, im.size)
 
 # ---- partner logos (these are small already: keep their size, only change the format)
-for i in range(1, 17):
+# Partners the website no longer lists (MacEwan 4, Acadia 9, UNB 11, Waterloo 15) are skipped.
+for i in (1, 2, 3, 5, 6, 7, 8, 10, 12, 13, 14, 16):
     save(load(f"2024__07__partner-{i}.png"), f"partners/partner-{i}.webp", 400, 90)
 for name in ("vancouver.jpeg", "windsor.png", "download-2.png", "simon-fraser.png", "northen_b_columbia.png"):
     save(load(f"2024__10__{name}"), f"partners/{Path(name).stem}.webp", 600, 90)
