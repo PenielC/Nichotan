@@ -19,7 +19,9 @@ param siteName string = 'nichotan-website'
   'westus2'
   'eastasia'
 ])
-param location string = 'westeurope'
+// East US 2, because Azure was not accepting new Static Web Apps in West Europe for this subscription (error RequestDisallowedByAzure).
+// A Static Web App cannot be moved between regions, so keep this value the same once it exists.
+param location string = 'eastus2'
 
 resource site 'Microsoft.Web/staticSites@2023-12-01' = {
   name: siteName
