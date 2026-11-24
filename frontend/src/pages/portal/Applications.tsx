@@ -1,20 +1,17 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, Lightbulb, Plus, Send, Upload } from 'lucide-react'
+import { Download, Plus, Send, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { AdmissionStatusBadge } from '@/components/admission-status'
-import { Field, FormError, SelectField } from '@/components/form'
+import { FormError } from '@/components/form'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ApiError, get, post } from '@/lib/api'
-import { applicantLevelLabel, applicantLevelOf, applicationKey, destinations, startTerms, type ApplicationFormResult, type DestinationCountry, type StartTerm } from '@/lib/application'
-import { candidateStatusLabel, dayText, intakeText, type DirectoryInstitution, type MyAdmission, type Suggestion } from '@/lib/admissions'
+import { candidateStatusLabel, dayText, intakeText, type MyAdmission } from '@/lib/admissions'
 import { UploadDialog } from '@/components/document-parts'
 import { download } from '@/lib/api'
 import { MyPreDeparture } from '@/components/my-pre-departure'
@@ -25,11 +22,8 @@ const mineKey = ['admissions', 'mine'] as const
 
 export default function Applications() {
   const queryClient = useQueryClient()
-  // Staff change these (offers, acceptances), so always fetch the latest when the page opens.
+  // Staff change these (adding an application, offers, acceptances), so always fetch the latest when the page opens.
   const list = useQuery({ queryKey: mineKey, queryFn: () => get<MyAdmission[]>('/api/admissions/mine'), staleTime: 0 })
-  const suggestions = useQuery({ queryKey: ['admissions', 'suggestions', 'mine'], queryFn: () => get<Suggestion[]>('/api/admissions/suggestions/mine') })
-  const [adding, setAdding] = useState(false)
-  const [suggesting, setSuggesting] = useState(false)
   const [withdrawing, setWithdrawing] = useState<MyAdmission | null>(null)
   const [offerFor, setOfferFor] = useState<MyAdmission | null>(null)
 
@@ -43,23 +37,23 @@ export default function Applications() {
     onError: (e) => toast.error(message(e)),
   })
 
-  const open = list.data?.filter((a) => a.status !== 'Withdrawn' && a.status !== 'Closed' && a.status !== 'Rejected').length ?? 0
-
   return (
     <div className="grid gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-ink">My applications</h1>
-          <p className="mt-1 max-w-2xl text-muted-foreground">Choose the schools and programmes you want. When one is ready, send it to your counsellor, who checks it and applies on the school’s website for you.</p>
+          <p className="mt-1 max-w-2xl text-muted-foreground">
+            Your applications start with your application form: choose your country, program and start date there. Your counsellor then adds your applications here. When one is ready, send it to them and they apply on the school’s website for you.
+          </p>
         </div>
-        <Button onClick={() => setAdding(true)} disabled={open >= 5}>
-          <Plus /> Add an application
+        <Button asChild>
+          <Link to="/portal/application">
+            <Plus /> Add an application
+          </Link>
         </Button>
       </div>
       <MyVisas />
       <MyPreDeparture />
-      {open >= 5 && <p className="-mt-2 text-sm text-muted-foreground">You have 5 open applications, the most you can have at once. Withdraw one to add another.</p>}
-
       {list.isError ? (
         <FormError message="We couldn’t load your applications. Please refresh the page." />
       ) : !list.data ? (
@@ -67,10 +61,10 @@ export default function Applications() {
       ) : list.data.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center">
-            <p className="font-medium text-ink">You haven’t added an application yet</p>
-            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">Pick a school and programme from our list to get started. Your counsellor can help if you’re not sure where to apply.</p>
-            <Button className="mt-4" onClick={() => setAdding(true)}>
-              <Plus /> Add an application
+            <p className="font-medium text-ink">You don’t have any applications yet</p>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">Fill in and sign your application form first. It holds the country, program and start date you want. Your counsellor then chooses schools with you and adds your applications here.</p>
+            <Button asChild className="mt-4">
+              <Link to="/portal/application">Go to my form</Link>
             </Button>
           </CardContent>
         </Card>
@@ -126,180 +120,9 @@ export default function Applications() {
         ))
       )}
 
-      {suggestions.data && suggestions.data.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg text-ink">Schools you’ve suggested</CardTitle>
-            <CardDescription>We’ll add them to the list if we can, and let you know.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-2">
-            {suggestions.data.map((s) => (
-              <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm">
-                <span>
-                  <span className="font-medium text-ink">{s.institutionName}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {s.programmeName} · {s.country}
-                  </span>
-                </span>
-                <Badge variant={s.status === 'Added' ? 'default' : s.status === 'Declined' ? 'outline' : 'secondary'}>{s.status === 'New' ? 'Waiting for us' : s.status === 'Added' ? 'Added to the list' : 'Not available'}</Badge>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {adding && <AddDialog onClose={() => setAdding(false)} onSuggest={() => { setAdding(false); setSuggesting(true) }} onDone={refresh} />}
-      {suggesting && <SuggestDialog onClose={() => setSuggesting(false)} onDone={refresh} />}
       {offerFor && <OfferLetterDialog application={offerFor} onClose={() => setOfferFor(null)} onDone={refresh} />}
       {withdrawing && <WithdrawDialog application={withdrawing} onClose={() => setWithdrawing(null)} onDone={refresh} />}
     </div>
-  )
-}
-
-function AddDialog({ onClose, onSuggest, onDone }: { onClose: () => void; onSuggest: () => void; onDone: () => void }) {
-  const form = useQuery({ queryKey: applicationKey, queryFn: () => get<ApplicationFormResult>('/api/application-form') })
-  const directory = useQuery({ queryKey: ['admissions', 'directory'], queryFn: () => get<DirectoryInstitution[]>('/api/admissions/directory') })
-  const [country, setCountry] = useState<DestinationCountry | ''>('')
-  const [institutionId, setInstitutionId] = useState('')
-  const [programmeId, setProgrammeId] = useState('')
-  const [intake, setIntake] = useState('')
-
-  // Programmes at the level on their own form, so they aren't offered the wrong kind of study.
-  const level = applicantLevelOf(form.data?.data.program.programLevel ?? null)
-  const destination = form.data?.data.program.destinationCountry ?? null
-  const institutions = (directory.data ?? []).filter((i) => (!country || i.country === country) && i.programmes.some((p) => !level || p.level === level))
-  const institution = institutions.find((i) => i.id === institutionId)
-  const programmes = (institution?.programmes ?? []).filter((p) => !level || p.level === level)
-  const programme = programmes.find((p) => p.id === programmeId)
-
-  const create = useMutation({
-    mutationFn: () => {
-      const [term, year] = intake.split('|')
-      return post<MyAdmission>('/api/admissions/mine', { programmeId, intakeTerm: term as StartTerm, intakeYear: Number(year) })
-    },
-    onSuccess: () => {
-      toast.success('Application added.')
-      onDone()
-      onClose()
-    },
-  })
-
-  return (
-    <Dialog open onOpenChange={(o) => !o && !create.isPending && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add an application</DialogTitle>
-          <DialogDescription>
-            {level ? `Showing ${applicantLevelLabel[level].toLowerCase()} programmes, matching your application form.` : 'Choose a school and programme. Fill in your application form to narrow this to your level of study.'}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4">
-          <SelectField
-            label="Country"
-            options={destinations.map((c) => ({ value: c, label: c }))}
-            placeholder={destination ? `All (you chose ${destination})` : 'All countries'}
-            value={country}
-            onChange={(e) => {
-              setCountry(e.target.value as DestinationCountry)
-              setInstitutionId('')
-              setProgrammeId('')
-              setIntake('')
-            }}
-          />
-          <SelectField
-            label="School"
-            required
-            options={institutions.map((i) => ({ value: i.id, label: `${i.name} (${i.country})` }))}
-            value={institutionId}
-            onChange={(e) => {
-              setInstitutionId(e.target.value)
-              setProgrammeId('')
-              setIntake('')
-            }}
-          />
-          <SelectField
-            label="Programme"
-            required
-            disabled={!institution}
-            options={programmes.map((p) => ({ value: p.id, label: p.name }))}
-            value={programmeId}
-            onChange={(e) => {
-              setProgrammeId(e.target.value)
-              setIntake('')
-            }}
-          />
-          <SelectField
-            label="When do you want to start?"
-            required
-            disabled={!programme}
-            options={(programme?.intakes ?? []).map((i) => ({ value: `${i.term}|${i.year}`, label: intakeText(i.term, i.year) }))}
-            value={intake}
-            onChange={(e) => setIntake(e.target.value)}
-          />
-          <button type="button" onClick={onSuggest} className="inline-flex items-center gap-1.5 justify-self-start text-sm text-primary underline-offset-2 hover:underline">
-            <Lightbulb className="size-4" aria-hidden /> Can’t find your school? Suggest it
-          </button>
-          <FormError message={create.error ? message(create.error) : null} />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={create.isPending}>
-            Cancel
-          </Button>
-          <Button onClick={() => create.mutate()} disabled={!intake || create.isPending}>
-            Add application
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function SuggestDialog({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
-  const [school, setSchool] = useState('')
-  const [country, setCountry] = useState<DestinationCountry | ''>('')
-  const [programme, setProgramme] = useState('')
-  const [term, setTerm] = useState<StartTerm | ''>('')
-  const [year, setYear] = useState('')
-  const [note, setNote] = useState('')
-  const send = useMutation({
-    mutationFn: () => post<Suggestion>('/api/admissions/suggestions', { institutionName: school.trim(), country, programmeName: programme.trim(), intakeTerm: term || null, intakeYear: year ? Number(year) : null, note: note.trim() || null }),
-    onSuccess: () => {
-      toast.success('Thank you. We’ll look into it and let you know.')
-      onDone()
-      onClose()
-    },
-  })
-  return (
-    <Dialog open onOpenChange={(o) => !o && !send.isPending && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Suggest a school</DialogTitle>
-          <DialogDescription>Tell us where you’d like to apply. We’ll add it to the list if we can and you can then add the application yourself.</DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4">
-          <Field label="School" required value={school} onChange={(e) => setSchool(e.target.value)} maxLength={200} />
-          <SelectField label="Country" required options={destinations.map((c) => ({ value: c, label: c }))} value={country} onChange={(e) => setCountry(e.target.value as DestinationCountry)} />
-          <Field label="Programme" required value={programme} onChange={(e) => setProgramme(e.target.value)} maxLength={200} />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <SelectField label="Start (optional)" options={startTerms} value={term} onChange={(e) => setTerm(e.target.value as StartTerm)} />
-            <Field label="Year (optional)" type="number" inputMode="numeric" value={year} onChange={(e) => setYear(e.target.value)} />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="suggest-note">Anything else?</Label>
-            <textarea id="suggest-note" value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={1000} className="w-full rounded-lg border border-input bg-card px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" />
-          </div>
-          <FormError message={send.error ? message(send.error) : null} />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={send.isPending}>
-            Cancel
-          </Button>
-          <Button onClick={() => send.mutate()} disabled={!school.trim() || !country || !programme.trim() || send.isPending}>
-            Send suggestion
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }
 
@@ -318,7 +141,7 @@ function WithdrawDialog({ application, onClose, onDone }: { application: MyAdmis
         <DialogHeader>
           <DialogTitle>Withdraw this application?</DialogTitle>
           <DialogDescription>
-            {application.institutionName}, {application.programmeName} ({intakeText(application.intakeTerm, application.intakeYear)}). You can add it again later.
+            {application.institutionName}, {application.programmeName} ({intakeText(application.intakeTerm, application.intakeYear)}). You can ask your counsellor to add it again later.
           </DialogDescription>
         </DialogHeader>
         <FormError message={withdraw.error ? message(withdraw.error) : null} />
@@ -334,7 +157,6 @@ function WithdrawDialog({ application, onClose, onDone }: { application: MyAdmis
     </Dialog>
   )
 }
-
 
 async function save(documentId: string, name: string) {
   try {

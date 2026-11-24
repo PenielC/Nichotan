@@ -26,9 +26,21 @@ public enum DestinationInterest
 
 public enum EnquiryStatus { New, Contacted, Closed }
 
+/// <summary>Where an enquiry came from.</summary>
+public enum EnquirySource
+{
+    /// <summary>The detailed form on the Nichotan app's public landing page.</summary>
+    LandingPage,
+
+    /// <summary>The short "Send a Message" form on the public website (www.nichotan.com).</summary>
+    WebsiteContactForm,
+}
+
 /// <summary>
-/// Someone who asked about studying abroad through the public landing page. They have no account, so this holds
+/// Someone who asked about studying abroad through a public form. They have no account, so this holds
 /// only what they chose to tell us, and is kept apart from candidates until a counsellor follows it up.
+/// The landing-page form also collects qualification, graduation year and destination; the website's short form does not,
+/// so those are empty for enquiries that came from it.
 /// </summary>
 public class Enquiry : Entity
 {
@@ -59,24 +71,48 @@ public class Enquiry : Entity
         DestinationInterest = destinationInterest;
         Message = string.IsNullOrWhiteSpace(message) ? null : message.Trim();
         Status = EnquiryStatus.New;
+        Source = EnquirySource.LandingPage;
+    }
+
+    /// <summary>A message sent from the website's "Send a Message" form: who they are, how to reach them, and what they wrote.</summary>
+    public static Enquiry FromWebsiteMessage(string name, string? email, string? phone, string message)
+    {
+        if (string.IsNullOrWhiteSpace(name)) throw new DomainException("Tell us your name.");
+        if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(phone)) throw new DomainException("Give an email address or a phone number so we can reach you.");
+        if (string.IsNullOrWhiteSpace(message)) throw new DomainException("Write your message.");
+
+        return new Enquiry
+        {
+            Name = name.Trim(),
+            Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim().ToLowerInvariant(),
+            Phone = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim(),
+            Message = message.Trim(),
+            Status = EnquiryStatus.New,
+            Source = EnquirySource.WebsiteContactForm,
+        };
     }
 
     public string Name { get; private set; } = string.Empty;
     public string? Email { get; private set; }
     public string? Phone { get; private set; }
-    public Qualification HighestQualification { get; private set; }
 
-    /// <summary>The year they graduated, or expect to.</summary>
-    public int GraduationYear { get; private set; }
+    /// <summary>Empty for messages from the website's short form.</summary>
+    public Qualification? HighestQualification { get; private set; }
+
+    /// <summary>The year they graduated, or expect to. Empty for messages from the website's short form.</summary>
+    public int? GraduationYear { get; private set; }
 
     public string? PreferredProgramme { get; private set; }
 
     /// <summary>They'd like help choosing a programme.</summary>
     public bool OpenToGuidance { get; private set; }
 
-    public DestinationInterest DestinationInterest { get; private set; }
+    /// <summary>Empty for messages from the website's short form.</summary>
+    public DestinationInterest? DestinationInterest { get; private set; }
+
     public string? Message { get; private set; }
     public EnquiryStatus Status { get; private set; }
+    public EnquirySource Source { get; private set; }
 
     /// <summary>Staff's own note on the follow-up.</summary>
     public string? StaffNote { get; private set; }

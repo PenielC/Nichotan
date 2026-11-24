@@ -1,17 +1,20 @@
 export type Qualification = 'SecondarySchool' | 'AdvancedLevel' | 'Certificate' | 'Diploma' | 'Bachelors' | 'Masters' | 'Doctorate' | 'Other'
 export type DestinationInterest = 'Both' | 'CanadaOnly' | 'GermanyOnly' | 'Other'
 export type EnquiryStatus = 'New' | 'Contacted' | 'Closed'
+/** Where it came from: the landing-page form, or the short "Send a Message" form on www.nichotan.com. */
+export type EnquirySource = 'LandingPage' | 'WebsiteContactForm'
 
 export interface Enquiry {
   id: string
   name: string
   email: string | null
   phone: string | null
-  highestQualification: Qualification
-  graduationYear: number
+  /** Empty for messages from the website's short form, which does not ask. */
+  highestQualification: Qualification | null
+  graduationYear: number | null
   preferredProgramme: string | null
   openToGuidance: boolean
-  destinationInterest: DestinationInterest
+  destinationInterest: DestinationInterest | null
   message: string | null
   status: EnquiryStatus
   staffNote: string | null
@@ -21,6 +24,7 @@ export interface Enquiry {
   /** When an administrator or counsellor first opened it; null while nobody has. */
   viewedAtUtc: string | null
   viewedBy: string | null
+  source: EnquirySource
 }
 
 export interface EnquirySummary {
@@ -47,7 +51,7 @@ export const qualifications: { value: Qualification; label: string }[] = [
   { value: 'Other', label: 'Other' },
 ]
 
-export const qualificationLabel = (q: Qualification) => qualifications.find((x) => x.value === q)?.label ?? q
+export const qualificationLabel = (q: Qualification | null) => (q ? (qualifications.find((x) => x.value === q)?.label ?? q) : 'Not asked')
 
 export const destinationOptions: { value: DestinationInterest; label: string }[] = [
   { value: 'Both', label: 'Yes, Canada or Germany' },
@@ -56,6 +60,8 @@ export const destinationOptions: { value: DestinationInterest; label: string }[]
   { value: 'Other', label: 'No, I have another country in mind' },
 ]
 
-export const destinationLabel = (d: DestinationInterest) => destinationOptions.find((x) => x.value === d)?.label ?? d
+export const destinationLabel = (d: DestinationInterest | null) => (d ? (destinationOptions.find((x) => x.value === d)?.label ?? d) : 'Not asked')
+
+export const enquirySourceLabel: Record<EnquirySource, string> = { LandingPage: 'Landing page form', WebsiteContactForm: 'Website message' }
 
 export const enquiryStatusLabel: Record<EnquiryStatus, string> = { New: 'New', Contacted: 'Contacted', Closed: 'Closed' }

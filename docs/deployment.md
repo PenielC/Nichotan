@@ -155,3 +155,27 @@ docker build -t nichotan-web frontend
 ```
 
 Run the API with the environment variables in `.env.example`; run the web image with `-e API_HOST=<api host:port> -e API_SCHEME=http` to forward `/api` to a local API.
+
+## The public website's contact form
+
+The marketing website (www.nichotan.com, built from `website/`) sends its "Send a Message" form to `https://app.nichotan.com/api/enquiries/website`, so the API has to allow calls from the website's address. The Bicep parameter `websiteOrigins` (default `https://www.nichotan.com` and `https://nichotan.com`) adds them to `Cors__AllowedOrigins`. Change it if the website is served from another address, then redeploy. The same `Enquiries:NotifyEmail` setting decides who is emailed about new messages.
+
+## The public website (www.nichotan.com)
+
+The marketing website in `website/` is deployed **separately** from the app, on Azure Static Web Apps (free plan), by its own pipeline, `.github/workflows/website.yml`.
+
+- A change under `website/` checks and deploys only the website. A change to the app or API does not touch it, and `deploy.yml` ignores website-only pushes.
+- Pull requests run the checks (lint, typecheck, build, Bicep) and do not deploy. A push to `main` deploys, using the same Azure login and `production` environment as the app. No new GitHub secret is needed: the deployment token is read from Azure while the job runs.
+- The first run creates the Static Web App (`infra/website.bicep`, named `nichotan-website`, in the existing resource group). Its generated address (shown on the run summary) works straight away for checking the site.
+- A rollback is a revert of the website change on `main`, or re-running an earlier successful run.
+
+**Order matters the first time.** The contact form calls the app's API, which only accepts calls from addresses listed in `websiteOrigins` (see above). Deploy the API change first, then the website, then switch DNS.
+
+### Attaching www.nichotan.com
+
+1. In the Azure portal, open the Static Web App, then **Custom domains** > **Add** > **Custom domain on other DNS**, and enter `www.nichotan.com`.
+2. Azure shows a CNAME record. Give it to Utande: host `www`, pointing to the site's generated address. Do not change any other record (MX, SPF/TXT, DKIM, `app`, `asuid.app`): email and the app depend on them.
+3. Wait for the domain to show **Ready**. Azure issues and renews the HTTPS certificate itself.
+4. **The bare address (nichotan.com)** cannot be a CNAME. Either ask Utande whether they can redirect `nichotan.com` to `https://www.nichotan.com` (web or URL forwarding), or, if they support ALIAS/ANAME records, add `nichotan.com` as a second custom domain in the portal and follow the TXT-record steps it shows. If neither is possible, the website still works on `www`; only the bare address would not.
+5. Lowering the DNS TTL a day before the switch makes it, and any rollback, quick.
+

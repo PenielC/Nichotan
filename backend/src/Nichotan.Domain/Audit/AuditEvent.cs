@@ -67,6 +67,10 @@ public enum AuditAction
     TaskUpdated,
     CandidateTimelineViewed,
     WhatsAppShareOpened,
+    // The "student requests an application" step was removed; these stay so audit rows written earlier can still be read.
+    ApplicationRequested,
+    ApplicationRequestWithdrawn,
+    ApplicationRequestAdded,
 }
 
 /// <summary>

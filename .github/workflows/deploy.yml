@@ -6,6 +6,8 @@ on:
   pull_request:
   push:
     branches: [main]
+    # The public website has its own pipeline (website.yml): a website-only change does not redeploy the app.
+    paths-ignore: ['website/**', '.github/workflows/website.yml', 'infra/website.bicep']
   workflow_dispatch:
     inputs:
       rollback_tag:

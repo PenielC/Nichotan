@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+/*
+ * Nicho Tan brand tokens, the same palette as the student and staff app (navy ink, green, lime), so the website and the app read as one organisation.
+ * Components use these names, not raw colours. Names are chosen so none is a prefix of another (a Tailwind v4 opacity-modifier gotcha).
+ */
+:root {
+  --canvas: #f5f7fb;
+  --surface: #ffffff;
+  --ink: #0b1f44;
+  --muted: #55627d;
+  --line: #dfe5ee;
+  --forest: #357a1a;
+  --leaf: #8dc63f;
+  --wash: #eef5e3;
+  --on-forest: #ffffff;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-forest: var(--forest);
+  --color-leaf: var(--leaf);
+  --color-wash: var(--wash);
+  --color-on-forest: var(--on-forest);
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+html {
+  background: var(--canvas);
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+:focus-visible {
+  outline: 3px solid var(--leaf);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Home page motion */
+@keyframes hero-zoom { from { transform: scale(1); } to { transform: scale(1.08); } }
+@keyframes hero-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes hero-progress { from { width: 0; } to { width: 100%; } }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+.hero-zoom { animation: hero-zoom 8s ease-out forwards; }
+.hero-rise { animation: hero-rise 0.8s ease-out both; }
+.hero-rise-late { animation: hero-rise 0.8s 0.2s ease-out both; }
+.hero-progress { animation: hero-progress 5s linear forwards; }
+.marquee-track { animation: marquee 50s linear infinite; width: max-content; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; flex-wrap: wrap; width: auto; justify-content: center; }
+  .marquee-dup { display: none; }
+  html { scroll-behavior: auto; }
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

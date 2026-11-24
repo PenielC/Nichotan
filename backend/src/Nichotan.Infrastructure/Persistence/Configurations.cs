@@ -296,6 +296,7 @@ public class EnquiryConfiguration : IEntityTypeConfiguration<Enquiry>
         b.Property(e => e.HighestQualification).HasConversion<string>().HasMaxLength(30);
         b.Property(e => e.DestinationInterest).HasConversion<string>().HasMaxLength(30);
         b.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+        b.Property(e => e.Source).HasConversion<string>().HasMaxLength(30).HasDefaultValue(EnquirySource.LandingPage);
         b.Property(e => e.PreferredProgramme).HasMaxLength(200);
         b.Property(e => e.Message).HasMaxLength(2000);
         b.Property(e => e.StaffNote).HasMaxLength(2000);

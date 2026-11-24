@@ -17,11 +17,11 @@ public record EnquiryResult(
     string Name,
     string? Email,
     string? Phone,
-    Qualification HighestQualification,
-    int GraduationYear,
+    Qualification? HighestQualification,
+    int? GraduationYear,
     string? PreferredProgramme,
     bool OpenToGuidance,
-    DestinationInterest DestinationInterest,
+    DestinationInterest? DestinationInterest,
     string? Message,
     EnquiryStatus Status,
     string? StaffNote,
@@ -29,10 +29,11 @@ public record EnquiryResult(
     DateTime? StatusChangedAtUtc,
     string? HandledBy,
     DateTime? ViewedAtUtc,
-    string? ViewedBy)
+    string? ViewedBy,
+    EnquirySource Source)
 {
     public static EnquiryResult From(Enquiry e) =>
-        new(e.Id, e.Name, e.Email, e.Phone, e.HighestQualification, e.GraduationYear, e.PreferredProgramme, e.OpenToGuidance, e.DestinationInterest, e.Message, e.Status, e.StaffNote, e.CreatedAtUtc, e.StatusChangedAtUtc, e.HandledByEmail, e.FirstViewedAtUtc, e.FirstViewedByEmail);
+        new(e.Id, e.Name, e.Email, e.Phone, e.HighestQualification, e.GraduationYear, e.PreferredProgramme, e.OpenToGuidance, e.DestinationInterest, e.Message, e.Status, e.StaffNote, e.CreatedAtUtc, e.StatusChangedAtUtc, e.HandledByEmail, e.FirstViewedAtUtc, e.FirstViewedByEmail, e.Source);
 }
 
 // ─────────────────────────── The public form ───────────────────────────
@@ -73,6 +74,42 @@ public class SubmitEnquiryHandler(IAppDbContext db, IEmailSender email, IAppUrls
     public async ValueTask<Unit> Handle(SubmitEnquiryCommand command, CancellationToken cancellationToken)
     {
         var enquiry = new Enquiry(command.Name, command.Email, PhoneNumbers.Normalise(command.Phone), command.HighestQualification, command.GraduationYear, command.PreferredProgramme, command.OpenToGuidance, command.DestinationInterest, command.Message);
+        db.Enquiries.Add(enquiry);
+        await db.SaveChangesAsync(cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(options.Value.NotifyEmail))
+        {
+            await RegisterCandidateHandler.SendSafely(email, EmailTemplates.NewEnquiry(options.Value.NotifyEmail.Trim(), enquiry.Name, $"{urls.WebBaseUrl}/staff/enquiries"), logger, cancellationToken);
+        }
+
+        return Unit.Value;
+    }
+}
+
+// ─────────────────────────── The website's "Send a Message" form ───────────────────────────
+
+public record SubmitWebsiteMessageCommand(string Name, string? Email, string? Phone, string Message) : ICommand;
+
+public class SubmitWebsiteMessageValidator : AbstractValidator<SubmitWebsiteMessageCommand>
+{
+    public SubmitWebsiteMessageValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
+        RuleFor(x => x.Email).MaximumLength(256).EmailAddress().When(x => !string.IsNullOrWhiteSpace(x.Email));
+        RuleFor(x => x.Phone).MaximumLength(30).MustBeInternationalNumber();
+        RuleFor(x => x.Message).NotEmpty().MaximumLength(2000);
+    }
+}
+
+/// <summary>
+/// A message from the public website lands in the same list as every other enquiry, marked with where it came from,
+/// and the team is emailed. As with the landing-page form, a failure to send never loses the message.
+/// </summary>
+public class SubmitWebsiteMessageHandler(IAppDbContext db, IEmailSender email, IAppUrls urls, IOptions<EnquiryOptions> options, ILogger<SubmitWebsiteMessageHandler> logger) : ICommandHandler<SubmitWebsiteMessageCommand>
+{
+    public async ValueTask<Unit> Handle(SubmitWebsiteMessageCommand command, CancellationToken cancellationToken)
+    {
+        var enquiry = Enquiry.FromWebsiteMessage(command.Name, command.Email, PhoneNumbers.Normalise(command.Phone), command.Message);
         db.Enquiries.Add(enquiry);
         await db.SaveChangesAsync(cancellationToken);
 

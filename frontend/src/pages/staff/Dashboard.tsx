@@ -11,7 +11,7 @@ import { PageHeader } from '@/components/page-header'
 import { get, query, type CandidateSummary, type Paged, type StaffMember } from '@/lib/api'
 import { caseWorkerRoles, hasAnyRole, useAuth } from '@/lib/auth'
 import { ViewedBadge } from '@/pages/staff/Enquiries'
-import { qualificationLabel, type EnquirySummary } from '@/lib/enquiries'
+import { enquirySourceLabel, qualificationLabel, type EnquirySummary } from '@/lib/enquiries'
 import { intakeText, type AdmissionStats, type AdmissionSummary, type PalFollowUp } from '@/lib/admissions'
 import { formatDate } from '@/lib/format'
 import type { StaffTask, TaskSummary } from '@/lib/tasks'
@@ -228,7 +228,7 @@ export default function Dashboard() {
                       <span className="min-w-0 text-sm">
                         <span className="font-medium text-ink">{q.name}</span>
                         <span className="block text-xs text-muted-foreground">
-                          {q.preferredProgramme ?? 'Wants guidance'} · {qualificationLabel(q.highestQualification)} · {formatDate(q.createdAtUtc)}
+                          {q.source === 'WebsiteContactForm' ? enquirySourceLabel[q.source] : `${q.preferredProgramme ?? 'Wants guidance'} · ${qualificationLabel(q.highestQualification)}`} · {formatDate(q.createdAtUtc)}
                         </span>
                       </span>
                       <ViewedBadge enquiry={q} />

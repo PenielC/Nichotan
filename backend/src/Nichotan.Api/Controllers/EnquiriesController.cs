@@ -22,6 +22,9 @@ public record SubmitEnquiryRequest(
     string? Message,
     string? Website);
 
+/// <summary>The website's short "Send a Message" form. <c>Website</c> is the same hidden trap field as on the landing-page form.</summary>
+public record SubmitWebsiteMessageRequest(string Name, string? Email, string? Phone, string Message, string? Website);
+
 public record UpdateEnquiryRequest(EnquiryStatus Status, string? StaffNote);
 
 [ApiController]
@@ -39,6 +42,17 @@ public class EnquiriesController(ISender sender) : ControllerBase
         await sender.Send(
             new SubmitEnquiryCommand(request.Name, request.Email, request.Phone, request.HighestQualification, request.GraduationYear, request.PreferredProgramme, request.OpenToGuidance, request.DestinationInterest, request.Message),
             cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>A message from the public website's contact form. Same protections as <see cref="Submit"/>: no account, rate limited by address, hidden trap field.</summary>
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimits.Email)]
+    [HttpPost("website")]
+    public async Task<IActionResult> SubmitWebsiteMessage(SubmitWebsiteMessageRequest request, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(request.Website)) return NoContent();
+        await sender.Send(new SubmitWebsiteMessageCommand(request.Name, request.Email, request.Phone, request.Message), cancellationToken);
         return NoContent();
     }
 

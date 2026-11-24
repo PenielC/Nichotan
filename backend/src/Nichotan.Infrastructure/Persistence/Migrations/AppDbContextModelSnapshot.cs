@@ -1000,7 +1000,6 @@ namespace Nichotan.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("DestinationInterest")
-                        .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
@@ -1015,7 +1014,7 @@ namespace Nichotan.Infrastructure.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<int>("GraduationYear")
+                    b.Property<int?>("GraduationYear")
                         .HasColumnType("integer");
 
                     b.Property<string>("HandledByEmail")
@@ -1023,7 +1022,6 @@ namespace Nichotan.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(256)");
 
                     b.Property<string>("HighestQualification")
-                        .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
@@ -1046,6 +1044,13 @@ namespace Nichotan.Infrastructure.Persistence.Migrations
                     b.Property<string>("PreferredProgramme")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("LandingPage");
 
                     b.Property<string>("StaffNote")
                         .HasMaxLength(2000)

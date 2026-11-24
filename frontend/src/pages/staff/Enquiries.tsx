@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ApiError, get, post, put, query, type Paged } from '@/lib/api'
 import { admissionsRoles, hasAnyRole, useAuth } from '@/lib/auth'
-import { destinationLabel, enquiryStatusLabel, qualificationLabel, type Enquiry, type EnquiryStatus } from '@/lib/enquiries'
+import { destinationLabel, enquirySourceLabel, enquiryStatusLabel, qualificationLabel, type Enquiry, type EnquiryStatus } from '@/lib/enquiries'
 import { formatDate, formatDateTime } from '@/lib/format'
 
 const pageSize = 25
@@ -131,12 +131,12 @@ export function EnquiryList() {
                       <div className="text-xs text-muted-foreground">{e.email ?? e.phone}</div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      {qualificationLabel(e.highestQualification)}
-                      <div className="text-xs text-muted-foreground">{e.graduationYear}</div>
+                      {e.source === 'WebsiteContactForm' ? enquirySourceLabel[e.source] : qualificationLabel(e.highestQualification)}
+                      <div className="text-xs text-muted-foreground">{e.graduationYear ?? ''}</div>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      {e.preferredProgramme ?? 'Wants guidance'}
-                      <div className="text-xs text-muted-foreground">{destinationLabel(e.destinationInterest)}</div>
+                      {e.source === 'WebsiteContactForm' ? (e.message ? `${e.message.slice(0, 60)}${e.message.length > 60 ? '…' : ''}` : '') : (e.preferredProgramme ?? 'Wants guidance')}
+                      {e.source !== 'WebsiteContactForm' && <div className="text-xs text-muted-foreground">{destinationLabel(e.destinationInterest)}</div>}
                     </TableCell>
                     <TableCell>
                       <Badge variant={tone(e.status)}>{enquiryStatusLabel[e.status]}</Badge>
@@ -209,10 +209,15 @@ function EnquiryDialog({ enquiry, canManage, onClose }: { enquiry: Enquiry; canM
               </a>
             )}
           </div>
-          <Row label="Highest qualification" value={`${qualificationLabel(enquiry.highestQualification)}, ${enquiry.graduationYear}`} />
-          <Row label="Preferred programme" value={enquiry.preferredProgramme ?? 'Not sure, wants guidance'} />
-          {enquiry.preferredProgramme && enquiry.openToGuidance && <Row label="Guidance" value="Also open to guidance" />}
-          <Row label="Canada and Germany" value={destinationLabel(enquiry.destinationInterest)} />
+          <Row label="Came from" value={enquirySourceLabel[enquiry.source]} />
+          {enquiry.source === 'LandingPage' && (
+            <>
+              <Row label="Highest qualification" value={`${qualificationLabel(enquiry.highestQualification)}, ${enquiry.graduationYear}`} />
+              <Row label="Preferred programme" value={enquiry.preferredProgramme ?? 'Not sure, wants guidance'} />
+              {enquiry.preferredProgramme && enquiry.openToGuidance && <Row label="Guidance" value="Also open to guidance" />}
+              <Row label="Canada and Germany" value={destinationLabel(enquiry.destinationInterest)} />
+            </>
+          )}
           {enquiry.message && <Row label="Message" value={enquiry.message} />}
         </dl>
         {canManage ? (

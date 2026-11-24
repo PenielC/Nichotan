@@ -154,12 +154,12 @@ function MyApplications() {
       <Card>
         <CardContent className="flex flex-wrap items-center gap-4">
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-ink">Choose where to apply</p>
-            <p className="mt-1 text-sm text-muted-foreground">Pick the schools and programmes you want. Your counsellor then applies for you.</p>
+            <p className="font-semibold text-ink">Start with your application form</p>
+            <p className="mt-1 text-sm text-muted-foreground">Your form holds the country, program and start date you want. Your counsellor uses it to choose schools with you and adds your applications here.</p>
           </div>
           <Button asChild>
-            <Link to="/portal/applications">
-              Add an application <ArrowRight />
+            <Link to="/portal/application">
+              Go to my form <ArrowRight />
             </Link>
           </Button>
         </CardContent>
@@ -170,7 +170,7 @@ function MyApplications() {
     <Card>
       <CardHeader>
         <CardTitle className="text-lg text-ink">Your applications</CardTitle>
-        <CardDescription>The schools and programmes you’ve chosen. Updates appear here as your counsellor applies for you and the schools reply.</CardDescription>
+        <CardDescription>The schools and programmes your counsellor has added for you. Updates appear here as they apply for you and the schools reply.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
         <Button asChild variant="outline" className="justify-self-start">

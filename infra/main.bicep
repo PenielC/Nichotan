@@ -90,6 +90,12 @@ param notifyEmail string = 'enquiries@nichotan.com'
 @description('The public address people use, with no trailing slash. Leave empty to use the generated Azure address; set it once a custom domain is attached.')
 param webBaseUrl string = ''
 
+@description('Addresses of the public marketing website, allowed to send its contact form to the API (no trailing slash).')
+param websiteOrigins array = [
+  'https://www.nichotan.com'
+  'https://nichotan.com'
+]
+
 @description('Your own address for the site, e.g. app.nichotan.com (no https://). Leave empty until DNS is set up and the domain is added in the portal.')
 param customDomain string = ''
 
@@ -323,6 +329,9 @@ var apiSecrets = concat(
   infoHasLogin ? [{ name: 'smtp-info-password', value: smtpInfoPassword }] : []
 )
 
+// The public website posts its contact form to this API from another address, so that address must be allowed.
+var websiteCorsEnv = [for (origin, i) in websiteOrigins: { name: 'Cors__AllowedOrigins__${i + 1}', value: origin }]
+
 var apiEnv = concat(
   [
     { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
@@ -366,7 +375,8 @@ var apiEnv = concat(
   infoHasLogin ? [
     { name: 'Smtp__Info__Username', value: smtpInfoUsername }
     { name: 'Smtp__Info__Password', secretRef: 'smtp-info-password' }
-  ] : []
+  ] : [],
+  websiteCorsEnv
 )
 
 resource apiApp 'Microsoft.App/containerApps@2024-03-01' = if (deployApps) {

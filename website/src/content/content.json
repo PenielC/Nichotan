@@ -1,0 +1,284 @@
+{
+  "home": {
+    "slides": [
+      {
+        "text": "Nicho Tan Consulting was established in 2014 in Zimbabwe to provide consultancy services to students who aspire to study abroad, expand their academic horizons, career prospects and global networks.",
+        "image": "2024/11/16-scaled.jpg",
+        "buttons": [
+          {
+            "label": "Learn More",
+            "href": "/about"
+          },
+          {
+            "label": "Reach Out",
+            "href": "/contact-us"
+          }
+        ]
+      },
+      {
+        "text": "Our concern, care and support continue through to regular contacts with all stakeholders, keeping track of development and progress of our student.",
+        "image": "2024/11/4.jpeg",
+        "buttons": [
+          {
+            "label": "Learn More",
+            "href": "/about"
+          },
+          {
+            "label": "Reach Out",
+            "href": "/contact-us"
+          }
+        ]
+      },
+      {
+        "text": "Our customized aproach allows us to work individually with each student through career guidance, handling application processes, student Visa processing and travel arrangements.",
+        "image": "2025/01/calgary-scaled.jpeg",
+        "buttons": [
+          {
+            "label": "Learn More",
+            "href": "/about"
+          },
+          {
+            "label": "Reach Out",
+            "href": "/contact-us"
+          }
+        ]
+      }
+    ],
+    "intro": [
+      "Nicho Tan Consulting was established in 2014 in Zimbabwe to provide consultancy services to students who aspire to study abroad, expand their academic horizons, career prospects and global networks. Our customized aproach allows us to work individually with each student through career guidance, handling application processes, student Visa processing and travel arrangements. Our concern, care and support continue through to regular contacts with all stakeholders, keeping track of development and progress of our student"
+    ],
+    "servicesHeading": "Services we offer",
+    "servicesIntro": "Our professionally trained, experienced education counsellors are always ready and committed to providing tailored effective solutions that meet our clients’ needs.",
+    "servicesButton": {
+      "label": "Learn More",
+      "href": "/services"
+    },
+    "services": [
+      {
+        "title": "1. Application Processing",
+        "body": [
+          "We assist students in compiling required documentation, information supplements and submitting the best applications possible for their program choices."
+        ]
+      },
+      {
+        "title": "2. Visa Processes",
+        "body": [
+          "We guide students in the visa application process. Thorough knowledge of the visa assessment process and immigration Act interpretations is indispensable given the dynamics of national and individual’s economic and political contexts."
+        ]
+      },
+      {
+        "title": "4. Mentoring & Counselling",
+        "body": [
+          "Mentorship is a key ingredient in the success of the student’s career journey. We work with students and their families to discuss preferences, passions, abilities and prospects of program and career choices."
+        ]
+      },
+      {
+        "title": "4. University Fairs, Seminars and Visits",
+        "body": [
+          "Facilitating the chance for students to meet universities \"face to face\", by interacting with official representatives and alumni, remains an important activity we are involved in."
+        ]
+      },
+      {
+        "title": "5. Institutional Selection",
+        "body": [
+          "Many factors come into play when deciding on a particular institution varying from the geographic locations, area living costs and many more."
+        ]
+      }
+    ],
+    "partnersHeading": "Our Partners",
+    "testimonialsHeading": "Testimonials",
+    "testimonials": [
+      {
+        "author": "Anesu Chimbiro",
+        "role": "Vancouver Island, Canada",
+        "quote": "\"I relocated to Canada in August 2016 as a student for a post-degree diploma in Global Business Management through Nichotan. Having graduated with an undergraduate degree in 2012 at Midlands State University and worked four years I had gone through many agents to try and relocate and chase my dreams. My experience with Bright Jonas and his Nichotan team was nothing short of amazing… \""
+      },
+      {
+        "author": "Jeminah Tendai Farikai",
+        "role": "Bachelor of Biomedical Science (Hons), Mahsa University, Malaysia",
+        "quote": "\"As an international student finding the perfect university and getting everything done on time can be rather stressful however Nichotan definitely helped me to make this process truly enjoyable, from helping with all the questions I had regarding the universities and the different courses they offered to apply for my visa and making sure I got to Malaysia and settled in safely… \""
+      },
+      {
+        "author": "Ravneek Kaur Bhullar",
+        "role": "Computer Science Student, University of Windsor, Canada",
+        "quote": "\"I recently got help from Mr Bright with my Study Visa application for Canada, as well as the Visitors Visa application for my parents. I would rate my experience 10/10, as he was really helpful. He was very fast to reply to my queries whether through a call or e-mail… \""
+      },
+      {
+        "author": "Munashe Cheza",
+        "role": "Canada",
+        "quote": "\"I am Extremely grateful to Mr Bright Jonas who was pivotal to me studying abroad. His Work Ethic, Knowledge, Persuasion and Schemata on the International field Launched me on to the Canadian Scene. Where I have Since Completed my Associate’s Degree in Business Administration and currently working as a Finance Officer for the Government of Nunavut … \""
+      },
+      {
+        "author": "Yoland Zvidzai",
+        "role": "Cape Breton University, Canada",
+        "quote": "\"Most people discourage applicants from using an agent for applying to university as they claim it is a waste of money when you can do everything by yourself online. I happen to be one of those people who was discouraged from using one. However, I was fortunate enough to meet Mr Jonas, who was very knowledgeable about everything that had to do with living, studying and working in Canada… \""
+      },
+      {
+        "author": "Lynnette Sauramba",
+        "role": "BBM (FM), Abertay Dundee University (UK) & SEGi University ",
+        "quote": "\"SEGi University was an exceptional and international experience which did not only advance my studies and knowledge because of the academic reputation and international environment. Studying in an international context became crucial for both my personal success and career-wise because it allowed development on l as an individual to be a strong- and open-minded person…\""
+      },
+      {
+        "author": "Rumbidzai Masamba",
+        "role": "Master Internation Marketing Management, IUBH University of Applied Sciences, Germany ",
+        "quote": "\"Germany has world-class universities and Professors, learning a new language and culture has been one of my goals, it is truly a dream come true. I am thankful to Nichotan for making this dream a reality. They were unbelievably helpful to me after failed attempts at many universities…\""
+      },
+      {
+        "author": "Mable Chiripanyanga",
+        "role": "Master International Marketing Management, IUBH, Germany",
+        "quote": "\"Mr. Bright Jonas and his team of Nichotan guided and assisted my young sister to go to Canada for her undergraduate studies at the University of Manitoba. The way they handled the whole process including processing Canadian visitors’ visas for my parents to accompany my sister left me convinced that they were the right people to engage when my time comes… \""
+      }
+    ],
+    "video": "2024/10/nichotan.mp4"
+  },
+  "about": {
+    "title": "About Us",
+    "story": {
+      "heading": "Our Story",
+      "paragraphs": [
+        "Nichotan Student Recruitment was established in 2014 in Zimbabwe to provide consultancy services to students who aspire to study abroad, expand their academic horizons, career prospects and global networks",
+        "Our customized approach allows us to work individually with each student through career guidance, handling application processes, student visa processing and travel arrangements. Our concern, care and support continue through to regular contacts with all stakeholders keeping track of progress and development of our student.",
+        "With years of experience and broad network partner learning institutions abroad, our family has successfully guided students towards gaining admission to many leading institutions in Canada, Germany and Malaysia.",
+        "We pride in our growth into a multiple award-winning educational consultancy through offering premium services for both our students and accredited partner universities, colleges, and schools."
+      ]
+    },
+    "missionVision": {
+      "heading": "Mission and Vision",
+      "blurbs": [
+        {
+          "title": "Our Mission",
+          "paragraphs": [
+            "To transform students’ lives by matching their abilities, performance, and desires with the best possible study abroad options. We are committed to helping parents reach the highest academic desires for their children, and helping students achieve their goals by providing individualized attention, guidance, and research with expertise in the entire processes of college planning"
+          ]
+        },
+        {
+          "title": "Our Vision",
+          "paragraphs": [
+            "To transform students’ lives by matching their abilities, performance, and desires with the best possible study abroad options. We are committed to helping parents reach the highest academic desires for their children, and helping students achieve their goals by providing individualized attention, guidance, and research with expertise in the entire processes of college planning"
+          ]
+        }
+      ]
+    },
+    "leadership": {
+      "heading": "Our Leadership",
+      "paragraphs": [
+        "Nichotan is a committed family of professionals with leaders who possess precisely the experience and expertise needed. Leadership includes the CEO, Doctor Purazen Chingombe and the Director Bright Jonas. Doctor Purazen Chingombe is an astute academic with a UK study abroad experience and Bright Jonas, a seasoned industrial captain bringing in two decades of corporate managerial experience."
+      ]
+    },
+    "team": {
+      "heading": "Meet Our Team",
+      "paragraphs": [
+        "Our professionally trained, experienced education counsellors are always ready and committed to providing tailored effective solutions that meet our clients’ needs."
+      ]
+    },
+    "partners": {
+      "heading": "Our Partners",
+      "paragraphs": [
+        "We work with a number of organisations around the world to fulfil our mandate."
+      ]
+    }
+  },
+  "services": {
+    "title": "Our Services",
+    "items": [
+      {
+        "heading": "Application Processing",
+        "paragraphs": [
+          "We assist students in compiling required documentation, information supplements and submitting the best applications possible for their program choices. Our knowledge of alternative, foundational and pathway admission platforms allows us to successfully place students with different abilities into their preferred programs. We monitor and guide each stage of the application process in line with deadlines and processing times."
+        ]
+      },
+      {
+        "heading": "Visa Processing",
+        "paragraphs": [
+          "We guide students in the visa application process. Thorough knowledge of the visa assessment process and immigration Act interpretations is indispensable given the dynamics of national and individual’s economic and political contexts. One cannot there rely on a general \"checklist\" of visa requirements in applying for a study visa."
+        ]
+      },
+      {
+        "heading": "Mentorship & Counselling",
+        "paragraphs": [
+          "Mentorship is a key ingredient in the success of the student’s career journey. We work with students and their families to discuss preferences, passions, abilities and prospects of program and career choices. We recommend and guide students towards creating a relevant and holistic profile that matches career requirements."
+        ]
+      },
+      {
+        "heading": "Institutional Selection",
+        "paragraphs": [
+          "Many factors come into play when deciding on a particular institution varying from the geographic locations, area living costs and many more. Using our knowledge, experience and our broad network of top institutions, we effectively consult on suitable school choices. It is crucial that our clients’ choices are the right ‘fit’ for their application success, budget and program offering."
+        ]
+      },
+      {
+        "heading": "University Fairs, Seminars and Visits",
+        "paragraphs": [
+          "Facilitating the chance for students to meet universities \"face to face\", by interacting with official representatives and alumni, remains an important activity we are involved in. During seminars and fairs students getting immediate personalized responses to enquiries as they finding out more about the programs and funding opportunities on offer directly from the university representatives. We also hold Virtual recruitment events to connect students to institutions."
+        ]
+      }
+    ]
+  },
+  "gallery": {
+    "title": "Gallery"
+  },
+  "requirements": {
+    "title": "Application Requirements",
+    "applicationHeading": "For Application and Assesment",
+    "applicationItems": [
+      "Coloured certified copies of academic documents.",
+      "Certified copy of coloured passport data page.",
+      "Certified copy of the birth certificate.",
+      "Recently taken  passport-sized photo in colour"
+    ],
+    "graduateHeading": "Graduate Applicants to additionally Provide",
+    "graduateItems": [
+      "Resume",
+      "Academic and Work-Related Reference letters.",
+      "Provide a Personal Statement to accompany your application."
+    ],
+    "button": "Download Application Form"
+  },
+  "contact": {
+    "title": "Get In Touch",
+    "formHeading": "Send a Message",
+    "detailsHeading": "Contact Details",
+    "details": [
+      {
+        "title": "Phone Numbers",
+        "text": "+263 774336439/ 775204279/ 773467884"
+      },
+      {
+        "title": "Physical Address",
+        "text": "59 Vanpraagh, Milton Park Harare"
+      },
+      {
+        "title": "Email Address",
+        "text": "enquiries@nichotan.com"
+      }
+    ],
+    "fields": [
+      "Email Address",
+      "Full Name",
+      "Phone Number",
+      "Message"
+    ]
+  },
+  "events": [
+    {
+      "slug": "columbia-college",
+      "formId": "rlew9BdxofPiZrpvrMwB",
+      "formName": "Columbia College Registration",
+      "height": 1636,
+      "wpTitle": "Columbia College Registration"
+    },
+    {
+      "slug": "university-of-manitoba-event-registration",
+      "formId": "rPdoZ0XSjSpFY6yQz6ev",
+      "formName": "Manitoba Event Registration",
+      "height": 1636,
+      "wpTitle": "University of Manitoba Event Registration"
+    },
+    {
+      "slug": "kwantlen-polytechnic-university-event-registration",
+      "formId": "D6s3z0S7NrPfJBqyIG5u",
+      "formName": "Kwantlen Event Registration",
+      "height": 1688,
+      "wpTitle": "Kwantlen Polytechnic University Event Registration"
+    }
+  ]
+}
