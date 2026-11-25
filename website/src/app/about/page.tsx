@@ -51,7 +51,7 @@ export default function About() {
       <Section tone="white">
         <Heading>{about.team.heading}</Heading>
         {about.team.paragraphs.map((p) => <p key={p} className="max-w-3xl text-lg text-muted">{p}</p>)}
-        <Image src="/images/home-4.webp" alt="The Nicho Tan team in branded polo shirts" width={1000} height={750} loading="lazy" className="mt-6 w-full max-w-3xl rounded-xl" />
+        {/* <Image src="/images/home-4.webp" alt="The Nicho Tan team in branded polo shirts" width={1000} height={750} loading="lazy" className="mt-6 w-full max-w-3xl rounded-xl" /> */}
       </Section>
       <Section>
         <Heading>{about.partners.heading}</Heading>
