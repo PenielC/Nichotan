@@ -17,7 +17,7 @@
     },
     {
       "route": "/images/*",
-      "headers": { "cache-control": "public, max-age=2592000" }
+      "headers": { "cache-control": "public, no-cache" }
     },
     {
       "route": "/video/*",
