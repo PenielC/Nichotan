@@ -23,17 +23,43 @@ export default function Footer() {
           <Link href="/" aria-label="Nicho Tan Consulting home">
             <Image src="/images/logo.webp" alt="Nicho Tan Consulting" width={449} height={520} loading="lazy" className="h-28 w-auto" />
           </Link>
-          <a
-            href={site.facebook}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Nicho Tan on Facebook (opens in a new tab)"
-            className="mt-6 inline-grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white transition hover:-translate-y-0.5 hover:bg-leaf hover:text-ink"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden className="h-5 w-5" fill="currentColor">
-              <path d="M13.5 22v-8.2h2.8l.5-3.3h-3.3V8.4c0-.9.4-1.7 1.8-1.7h1.6V3.8s-1.3-.2-2.6-.2c-2.6 0-4.3 1.6-4.3 4.4v2.5H7.2v3.3H10V22h3.5Z" />
-            </svg>
-          </a>
+          <div className="mt-6 flex gap-3">
+            <a
+              href={site.facebook}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Nicho Tan on Facebook (opens in a new tab)"
+              className="inline-grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white transition hover:-translate-y-0.5 hover:bg-leaf hover:text-ink"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden className="h-5 w-5" fill="currentColor">
+                <path d="M13.5 22v-8.2h2.8l.5-3.3h-3.3V8.4c0-.9.4-1.7 1.8-1.7h1.6V3.8s-1.3-.2-2.6-.2c-2.6 0-4.3 1.6-4.3 4.4v2.5H7.2v3.3H10V22h3.5Z" />
+              </svg>
+            </a>
+            <a
+              href={site.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Nicho Tan on Instagram (opens in a new tab)"
+              className="inline-grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white transition hover:-translate-y-0.5 hover:bg-leaf hover:text-ink"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="5" />
+                <circle cx="12" cy="12" r="4" />
+                <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+              </svg>
+            </a>
+            <a
+              href={site.linkedin}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Nicho Tan on LinkedIn (opens in a new tab)"
+              className="inline-grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white transition hover:-translate-y-0.5 hover:bg-leaf hover:text-ink"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden className="h-5 w-5" fill="currentColor">
+                <path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM3 9.75h4V21H3V9.75Zm6.5 0h3.8v1.54h.05c.53-1 1.82-2.04 3.75-2.04 4 0 4.75 2.63 4.75 6.05V21h-4v-5.1c0-1.22-.02-2.78-1.7-2.78-1.7 0-1.96 1.33-1.96 2.69V21h-4V9.75Z" />
+              </svg>
+            </a>
+          </div>
         </div>
 
         <nav aria-label="Footer">

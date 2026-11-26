@@ -17,6 +17,8 @@ export const site = {
   // Set NEXT_PUBLIC_ENQUIRY_URL at build time to point somewhere else, e.g. a local API.
   enquiryEndpoint: process.env.NEXT_PUBLIC_ENQUIRY_URL ?? "https://app.nichotan.com/api/enquiries/website",
   facebook: "https://www.facebook.com/profile.php?id=100067150133856",
+  instagram: "https://www.instagram.com/nichotanconsulting/",
+  linkedin: "https://www.linkedin.com/company/nichotan-consulting",
   // The student application lives in the Nicho Tan app, not on the website.
   applicationFormUrl: "https://app.nichotan.com/register",
   googleTag: "GT-NFR3C2DC",
