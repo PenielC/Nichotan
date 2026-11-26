@@ -22,7 +22,7 @@ const strip = [
   { src: "/images/home-1.webp", alt: "Students and parents at a Nicho Tan pre-departure session" },
   { src: "/images/home-2.webp", alt: "Graduates outside the Okanagan College Centre for Learning" },
   { src: "/images/home-3.webp", alt: "Students at the Thompson Rivers University winter pre-departure" },
-  { src: "/images/home-4.webp", alt: "The Nicho Tan team at the Thompson Rivers University pre-departure" },
+  { src: "/images/home-4.png", alt: "The Nicho Tan team at the Thompson Rivers University pre-departure" },
 ];
 
 const serviceImages = [1, 2, 3, 4, 5].map((n) => ({ src: `/images/service-${n}.webp`, alt: "Nicho Tan students and counsellors at a seminar or event" }));
